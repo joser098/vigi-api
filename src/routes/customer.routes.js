@@ -1,7 +1,7 @@
+const registerCustomer = require("../handlers/Customer/registerCustomer.handler");
+
 const customerRouter = require("express").Router();
 
-customerRouter.get("/", (req, res) => {
-  res.send("POST HTTP method on customer resource");
-});
+customerRouter.post("/", registerCustomer);
 
 module.exports = customerRouter;
