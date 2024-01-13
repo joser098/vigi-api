@@ -1,4 +1,4 @@
-const _assignCartToCustomer = require("../../controllers/Cart/assingCartToCustomer.controller");
+const _assignCartToCustomer = require("../../controllers/Customer/assingCartToCustomer.controller");
 const _createNewCart = require("../../controllers/Cart/createNewCart.controller");
 const _registerCustomer = require("../../controllers/Customer/registerCustomer.controller");
 
