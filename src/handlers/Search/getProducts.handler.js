@@ -1,13 +1,18 @@
 const _getProductsByCategory = require("../../controllers/Search/getProductsByCategory.controller");
+const _getProuctsInPromotion = require("../../controllers/Search/getProductsInPromotion.controller");
 
 const getProducts = async (req, res) => {
   try {
-    const { category } = req.query;
+    const { category, promotion } = req.query;
 
     let products = [];
 
     if (category) {
       products = await _getProductsByCategory(category);
+    }
+
+    if (promotion) {
+      products = await _getProuctsInPromotion();
     }
 
     return res
