@@ -1,0 +1,20 @@
+const _getProductsByCategory = require("../../controllers/Search/getProductsByCategory.controller");
+
+const getProducts = async (req, res) => {
+  try {
+    const { category } = req.query;
+
+    let products = [];
+
+    if (category) {
+      products = await _getProductsByCategory(category);
+    }
+
+    return res
+      .status(200)
+      .json({ success: true, data: products, total: products.length });
+  } catch (error) {
+    return res.status(400).json({ success: false, message: error.message });
+  }
+};
+module.exports = getProducts;
