@@ -1,9 +1,7 @@
-const { Router } = require("express");
-const router = Router();
+const router  = require("express").Router();
+const searchRouter = require('./Search/search.routes');
 
 //Routes
-router.use("/ping", async (req, res) => {
-  res.send("pong");
-});
+router.use("/search", searchRouter);
 
 module.exports = router;
