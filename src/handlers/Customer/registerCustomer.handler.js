@@ -1,17 +1,31 @@
 const _assignCartToCustomer = require("../../controllers/Customer/assingCartToCustomer.controller");
 const _createNewCart = require("../../controllers/Cart/createNewCart.controller");
 const _registerCustomer = require("../../controllers/Customer/registerCustomer.controller");
+const _validateCustomerExists = require("../../controllers/Customer/validateCustomerExists.controller");
+const {
+  validateCustomer,
+} = require("../../services/zod_schemas/customer_validation.schema");
 
 const registerCustomer = async (req, res) => {
   try {
-    const { username, email, password, name, last_name, address, phone, DNI } =
-      req.body;
+    //Validate data types
+    const validation = validateCustomer(req.body);
 
-    //TODO: Validate data types
-    //TODO: Validate if the customer already exists
+    if (!validation.success) {
+      return res
+        .status(400)
+        .json({ success: false, message: validation.error.issues[0].message });
+    }
+
+    //Validate if the customer already exists
+    const user = await _validateCustomerExists(validation.data);
+
+    if (user.userFound) {
+      return res.status(409).json({ success: false, message: user.message });
+    }
 
     //Register the customer
-    const customer = await _registerCustomer(req.body);
+    const customer = await _registerCustomer(validation.data);
 
     //Create a new cart for the customer
     let cart;
