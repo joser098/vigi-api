@@ -5,6 +5,7 @@ const _validateCustomerExists = require("../../controllers/Customer/validateCust
 const {
   validateCustomer,
 } = require("../../services/zod_schemas/customer_validation.schema");
+const _sendRegisterNotification = require("../../controllers/Notifications/sendNotification");
 
 const registerCustomer = async (req, res) => {
   try {
@@ -47,6 +48,9 @@ const registerCustomer = async (req, res) => {
       cart,
       asssingmentResult,
     };
+
+    //Send notification
+    await _sendRegisterNotification(validation.data.email, "Bienvenido a vigi.cam! 🎉", "register.html");
 
     if (asssingmentResult.acknowledged) {
       return res.status(201).json(res_model);
