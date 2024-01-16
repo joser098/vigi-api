@@ -59,7 +59,7 @@ const validateCustomer = (input) => {
 };
 
 const validateUpdateCustomer = (input) => {
-  return customerValidationSchema.safeParserse(input);
+  return customerValidationSchema.partial().safeParse(input);
 };
 
 module.exports = {
