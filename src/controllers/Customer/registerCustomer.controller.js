@@ -1,5 +1,6 @@
 const bcrypt = require("bcrypt");
 const db_conn = require("../../services/db_conn");
+const getDate = require("../../services/getDate");
 
 const _registerCustomer = async (data) => {
   const { username, email, password, name, last_name, address, phone, DNI } =
@@ -20,6 +21,7 @@ const _registerCustomer = async (data) => {
       DNI,
     },
     has_order_active: false,
+    register_date: getDate(),
   };
 
   const collection = await db_conn(
