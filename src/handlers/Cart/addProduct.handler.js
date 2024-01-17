@@ -1,6 +1,5 @@
 const _addProduct = require("../../controllers/Cart/addProduct.controller");
 const _getCartById = require("../../controllers/Cart/getCartById.controller");
-const _getCartTotals = require("../../controllers/Cart/getCartTotals.controller");
 const validateCartAdd = require("../../services/zod_schemas/cart_addProduct.schema");
 
 const addProduct = async (req, res) => {
