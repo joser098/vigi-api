@@ -6,7 +6,7 @@ const _createNewCart = async (customer_id) => {
   const cart_model = {
     customer_id,
     current_products_added: [],
-    products_QTY: 0,
+    products_total: 0,
     amount_to_pay: 0,
   };
 
