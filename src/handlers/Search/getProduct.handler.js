@@ -5,6 +5,7 @@ const { productDic } = require("../../utils/dictionary");
 const getProduct = async (req, res) => {
   try {
     const { id, model } = req.query;
+    if(!id && !model) return res.status(400).json({ success: false, message: "Missing query" });
 
     let product = {};
 
@@ -18,7 +19,7 @@ const getProduct = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      data: product != null ? product : productDic.notFound,
+      data: product == null ? productDic.notFound : product,
     });
   } catch (error) {
     return res.status(400).json({ success: false, message: error.message });
