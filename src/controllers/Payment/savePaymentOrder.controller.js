@@ -2,6 +2,7 @@ const getDate = require("../../services/getDate");
 const db_conn = require("../../services/db_conn");
 
 const _savePaymentOrder = async ({
+  additional_info,
   authorization_code,
   card,
   charges_detail,
@@ -36,6 +37,7 @@ const _savePaymentOrder = async ({
     id,
     status,
     status_detail,
+    additional_info,
     date_approved,
     date_created,
     date_last_updated,

@@ -1,6 +1,6 @@
 const { MercadoPagoConfig, Preference } = require("mercadopago");
 
-const _createPaymentOrder = async (items) => {
+const _createPaymentOrder = async (customer_id, items) => {
   // Agrega credenciales
   const client = new MercadoPagoConfig({
     accessToken: process.env.MP_ACCESS_TOKEN,
@@ -34,6 +34,9 @@ const _createPaymentOrder = async (items) => {
           },
         ],
       },
+      payer: {
+        name: customer_id,
+      }
     },
   });
 
