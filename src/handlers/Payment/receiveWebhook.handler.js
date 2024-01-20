@@ -1,6 +1,7 @@
 const { MercadoPagoConfig, Payment } = require("mercadopago");
 const _savePaymentOrder = require("../../controllers/Payment/savePaymentOrder.controller");
 const sendNotification = require("../../controllers/Notifications/sendNotification");
+const createOrderHandler = require("../Order/createOrder.handler");
 
 const receiveWeebhook = async (req, res) => {
   try {
@@ -17,7 +18,10 @@ const receiveWeebhook = async (req, res) => {
         id: payment["data.id"],
       });
       _savePaymentOrder(paymentDetails);
+      
+      createOrderHandler(paymentDetails.id ,paymentDetails.additional_info, paymentDetails.transaction_details.total_paid_amount);
     } else return res.status(204);
+
 
     //Enviar correo al cliente y al admin
     if (paymentDetails.status === "approved") {
