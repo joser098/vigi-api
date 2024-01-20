@@ -1,6 +1,6 @@
 const _getAllOrders = require("../../controllers/Search/getAllOrders.controller");
 const _getOrderByStatus = require("../../controllers/Search/getOrderByStatus.controller");
-const validateOrderStatus = require("../../services/zod_schemas/orderStatus.schema");
+const { validateOrderStatus } = require("../../services/zod_schemas/enums.schema");
 
 const getOrders = async (req, res) => {
   try {
