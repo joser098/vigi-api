@@ -23,6 +23,13 @@ describe("POST Register Customer", () => {
     expect(response.body.asssingmentResult.acknowledged).toBe(true);
   });
 
+  it("should return status 409 && email already exits message", async () => {
+    const response = await request.post("/api/customer").send(json);
+    expect(response.status).toBe(409);
+    expect(response.body.success).toBe(false);
+    expect(response.body.message).toBe("Customer with email test@email.com already exists");
+  });
+
   it("should return status 400 && invaid email message", async () => {
     const response = await request.post("/api/customer").send({
       username: "joser098",
@@ -31,5 +38,16 @@ describe("POST Register Customer", () => {
     expect(response.status).toBe(400);
     expect(response.body.success).toBe(false);
     expect(response.body.message).toBe("Invalid email");
+  });
+
+  it("should return status 400 && Name is required message", async () => {
+    const response = await request.post("/api/customer").send({
+      username: "joser098",
+      email: "correo@valido.com",
+      password: "contrasena123",
+    });
+    expect(response.status).toBe(400);
+    expect(response.body.success).toBe(false);
+    expect(response.body.message).toBe("Name is required");
   });
 });
