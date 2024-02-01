@@ -1,7 +1,7 @@
 const z = require('zod');
 
 const orderStatusSchema = z.enum(["recibido", "en preparacion", "enviado", "entregado"]);
-const categoryProductSchema = z.enum(["alarmas", "camaras", "dvr", "almacenamiento", "kits","otros"]);
+const categoryProductSchema = z.enum(["alarmas", "camaras", "dvr", "almacenamiento", "kits", "porteros" ,"otros"]);
 
 const validateOrderStatus = (status) => {
    return orderStatusSchema.safeParse(status);
