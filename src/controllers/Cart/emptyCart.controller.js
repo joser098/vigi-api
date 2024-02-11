@@ -7,7 +7,7 @@ const _emptyCart = async (id) => {
   const result = await collection.updateOne(
     { _id: new ObjectId(id) },
     {
-      $set: { current_products_added: [], products_total: 0, amount_to_pay: 0 },
+      $set: { items: [], products_total: 0, amount_to_pay: 0 },
     }
   );
 

@@ -6,7 +6,7 @@ const productSchema = z.object({
       required_error: "Product ID is required",
       invalid_type_error: "Product ID must be a string",
     })
-    .min(24, { message: "Product ID must be at least 24 characters" }),
+    .min(24, { message: "Product ID must be at least 24 characters" }),  
   picture_url: z.string({
     required_error: "Product picture URL is required",
     invalid_type_error: "Product picture URL must be a string",
@@ -26,15 +26,21 @@ const productSchema = z.object({
 });
 
 const cartSchema = z.object({
-  cart_id: z
+  _id: z
     .string({
       required_error: "Cart ID is required",
       invalid_type_error: "Cart ID must be a string",
     })
     .min(24, { message: "Cart ID must be at least 24 characters" }),
-  products: z.array(productSchema),
-  products_total: z.number().int().positive(),
-  amount_to_pay: z.number().positive(),
+  customer_id: z
+    .string({
+      required_error: "Customer ID is required",
+      invalid_type_error: "Customer ID must be a string",
+    })
+    .min(24, { message: "Customer ID must be at least 24 characters" }),  
+  items: z.array(productSchema),
+  products_total: z.number().int(),
+  amount_to_pay: z.number(),
 });
 
 const validateCartAddProduct = (input) => {
