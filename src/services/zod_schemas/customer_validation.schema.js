@@ -32,12 +32,6 @@ const customerValidationSchema = z.object({
     })
     .min(3)
     .max(20),
-  address: z
-    .string({
-      required_error: "Address is required",
-      invalid_type_error: "Address must be a string",
-    })
-    .min(3),
   phone: z
     .string({
       required_error: "Phone is required",
@@ -45,13 +39,43 @@ const customerValidationSchema = z.object({
     })
     .min(3)
     .max(15),
-  DNI: z
-    .string({
-      required_error: "Dni is required",
-      invalid_type_error: "Dni must be a string",
-    })
-    .min(3)
-    .max(12),
+  address: z.object({
+    province: z.string({
+      required_error: "Province is required",
+      invalid_type_error: "Province must be a string",
+    }),
+    location: z.string({
+      required_error: "Location is required",
+      invalid_type_error: "Location must be a string",
+    }),
+    address_name: z.string({
+      required_error: "Address name is required",
+      invalid_type_error: "Address name must be a string",
+    }),
+    address_number: z.string({
+      required_error: "Address number is required",
+      invalid_type_error: "Address number must be a string",
+    }),
+    department: z.string({
+      required_error: "Deparment is required",
+      invalid_type_error: "Deparment must be a string",
+    }),
+    zip_code: z.string({
+      required_error: "Zip code is required",
+      invalid_type_error: "Zip code must be a string",
+    }),
+  }),
+  conditions_accepted: z.boolean({
+    required_error: "Conditions accept is required",
+    invalid_type_error: "Conditions accept must be a boolean",
+  })
+  // DNI: z
+  //   .string({
+  //     required_error: "Dni is required",
+  //     invalid_type_error: "Dni must be a string",
+  //   })
+  //   .min(3)
+  //   .max(12),
 });
 
 const validateCustomer = (input) => {

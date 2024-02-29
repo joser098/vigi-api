@@ -44,6 +44,7 @@ const registerCustomer = async (req, res) => {
     }
 
     const res_model = {
+      success: true,
       customer,
       cart,
       asssingmentResult,
@@ -60,7 +61,7 @@ const registerCustomer = async (req, res) => {
       .status(500)
       .json({ success: false, message: "Register customer when wrong" });
   } catch (error) {
-    return res.status(400).json({ message: error.message });
+    return res.status(400).json({ success: false, message: error.message });
   }
 };
 module.exports = registerCustomer;

@@ -11,7 +11,7 @@ const _validateCustomerExists = async (data) => {
   if (result) {
     const obj = {
       userFound: true,
-      message: `Customer with email ${data.email} already exists`,
+      message: `Ya existe un usuario con este correo ${data.email}`,
     };
 
     return obj;
