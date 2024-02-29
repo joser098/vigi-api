@@ -13,7 +13,7 @@ const addProduct = async (req, res) => {
     }
 
     // Check if Cart exists
-    const cartExists = await _getCartById(validateBody.data._id);
+    const cartExists = await _getCartById(validateBody.data.cart_id);
 
     if (!cartExists) {
       return res

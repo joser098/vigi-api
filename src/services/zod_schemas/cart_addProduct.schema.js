@@ -26,7 +26,7 @@ const productSchema = z.object({
 });
 
 const cartSchema = z.object({
-  _id: z
+  cart_id: z
     .string({
       required_error: "Cart ID is required",
       invalid_type_error: "Cart ID must be a string",
