@@ -6,7 +6,7 @@ const login = async (req, res) => {
     const validation = validateLogin(req.body);
 
     if (!validation.success) {
-      return res.status(400).json({ message: validation.error.issues[0].message });
+      return res.status(400).json({success: false, message: validation.error.issues[0].message });
     }
 
     const { email, password } = validation.data;
@@ -25,7 +25,7 @@ const login = async (req, res) => {
         break;
     }
 
-    return res.status(status).json({ message: error.message });
+    return res.status(status).json({success: false, message: error.message });
   }
 };
 module.exports = login;
