@@ -22,7 +22,6 @@ const _validateLogin = async (email, password) => {
 
   return {
     access: true,
-    _id: user_found._id,
     token: token,
   };
 };
