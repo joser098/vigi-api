@@ -2,7 +2,7 @@ const { ObjectId } = require("mongodb");
 const db_conn = require("../../services/db_conn");
 
 const _addProduct = async ({
-  _id,
+  cart_id,
   items,
   products_total,
   amount_to_pay,
@@ -11,7 +11,7 @@ const _addProduct = async ({
 
   const result = await collection.updateOne(
     {
-      _id: new ObjectId(_id),
+      _id: new ObjectId(cart_id),
     },
     {
       $set: {
