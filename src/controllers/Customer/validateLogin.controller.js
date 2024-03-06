@@ -1,6 +1,7 @@
 const db_conn = require("../../services/db_conn");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const _updateLastLogin = require("./updateLastLogin.controller");
 
 const _validateLogin = async (email, password) => {
   const collection = await db_conn(
@@ -19,7 +20,8 @@ const _validateLogin = async (email, password) => {
   }
 
   const token = await jwt.sign(user_found, process.env.JWT_SECRET);
-
+  _updateLastLogin(user_found._id);
+  
   return {
     access: true,
     token: token,
