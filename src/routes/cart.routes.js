@@ -7,6 +7,6 @@ const cartRouter = require("express").Router();
 
 cartRouter.put("/add", userAuth, addProduct);
 cartRouter.put("/empty/:id", emptyCart);
-cartRouter.get("/:id", getCartById)
+cartRouter.get("/", userAuth, getCartById)
 
 module.exports = cartRouter;

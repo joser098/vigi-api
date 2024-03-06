@@ -2,9 +2,9 @@ const _getCartById = require("../../controllers/Cart/getCartById.controller");
 
 const getCartById = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { cart_id } = req.body;
 
-    const cart = await _getCartById(id);
+    const cart = await _getCartById(cart_id);
     if (!cart) {
       return res.status(404).json({ success: false, message: "Cart not found" });
     }
