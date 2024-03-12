@@ -57,8 +57,8 @@ const customerValidationSchema = z.object({
       invalid_type_error: "Address number must be a string",
     }),
     department: z.string({
-      required_error: "Deparment is required",
-      invalid_type_error: "Deparment must be a string",
+      required_error: "Department is required",
+      invalid_type_error: "Department must be a string",
     }),
     zip_code: z.string({
       required_error: "Zip code is required",

@@ -3,10 +3,11 @@ const _getCustomerByName = require("../../controllers/Customer/getCustomerByName
 
 const getCustomer = async (req, res) => {
   try {
-    const { id, name } = req.query;
+    const { customer_id, name } = req.body;
+
     let customer;
-    if (id) {
-      customer = await _getCustomerById(id);
+    if (customer_id) {
+      customer = await _getCustomerById(customer_id);
     }
 
     if (name) {
