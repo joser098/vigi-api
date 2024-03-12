@@ -2,8 +2,9 @@ const _createPaymentOrder = require("../../controllers/Payment/createPaymentOrde
 
 const createPaymentOrder = async (req, res) => {
   try {
-    const { customer_id, items } = req.body;
-    const paymentOrder = await _createPaymentOrder(customer_id, items);
+    const { customer_id, items, shipments } = req.body;
+
+    const paymentOrder = await _createPaymentOrder(customer_id, items, shipments);
 
     return res.status(200).json({ success: true, data: paymentOrder });
   } catch (error) {
