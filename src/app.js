@@ -1,5 +1,5 @@
 const express = require("express");
-const cors = require("cors");
+// const cors = require("cors");
 const router = require("./routes/index");
 const whitelist = require("./utils/whitelist");
 
@@ -7,7 +7,6 @@ const whitelist = require("./utils/whitelist");
 const app = express();
 
 //Middlewares
-app.use(cors({origin: "*"}));
 // app.use(
 //   cors({
 //     origin: (origin, callback) => {
