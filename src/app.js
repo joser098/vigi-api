@@ -19,6 +19,8 @@ app.use(
   })
 );
 
+app.options('/api', cors());
+
 app.disable("x-powered-by");
 app.use(express.json());
 
