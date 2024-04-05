@@ -3,6 +3,7 @@ const getOrderById = require("../handlers/Search/getOrderById.handler");
 const getOrderByStatus = require("../handlers/Search/getOrders.handler");
 const getProduct = require("../handlers/Search/getProduct.handler");
 const getProducts = require("../handlers/Search/getProducts.handler");
+const getProvinces = require("../handlers/Search/getProvinces.handler");
 
 const searchRouter = require("express").Router();
 
@@ -14,5 +15,8 @@ searchRouter.get("/getOrders", getOrderByStatus);
 searchRouter.get("/getAllProducts", getAllProducts);
 searchRouter.get("/getProduct", getProduct);
 searchRouter.get("/getProducts", getProducts);
+
+//Const data
+searchRouter.get("/provinces", getProvinces);
 
 module.exports = searchRouter;
