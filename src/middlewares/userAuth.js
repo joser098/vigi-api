@@ -13,6 +13,7 @@ module.exports = (req, res, next) => {
     const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
     const { _id, cart_id } = decodedToken;
 
+    req.params.customer_id = _id;
     req.body.customer_id = _id;
     req.body.cart_id = cart_id;
   } catch (error) {
