@@ -14,15 +14,15 @@ const updateCustomer = async (req, res) => {
         .json({ message: validation.error.issues[0].message });
     }
 
-    const { id } = req.params;
-    const chekCustomer = await _getCustomerById(id);
+    const { customer_id } = req.body;
+    const chekCustomer = await _getCustomerById(customer_id);
     if (!chekCustomer) {
       return res
         .status(404)
         .json({ success: false, message: "Customer not found" });
     }
 
-    const customerUpdated = await _updateCustomer(id, validation.data);
+    const customerUpdated = await _updateCustomer(customer_id, validation.data);
 
     return res
       .status(200)

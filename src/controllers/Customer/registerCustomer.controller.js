@@ -13,6 +13,7 @@ const _registerCustomer = async (data) => {
     username,
     email,
     password: hash,
+    profile_image: "",
     user_data: {
       name,
       last_name,
