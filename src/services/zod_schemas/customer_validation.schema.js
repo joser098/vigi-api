@@ -68,14 +68,14 @@ const customerValidationSchema = z.object({
   conditions_accepted: z.boolean({
     required_error: "Conditions accept is required",
     invalid_type_error: "Conditions accept must be a boolean",
-  })
-  // DNI: z
-  //   .string({
-  //     required_error: "Dni is required",
-  //     invalid_type_error: "Dni must be a string",
-  //   })
-  //   .min(3)
-  //   .max(12),
+  }),
+  DNI: z
+    .string({
+      required_error: "Dni is required",
+      invalid_type_error: "Dni must be a string",
+    })
+    .min(3)
+    .max(12),
 });
 
 const validateCustomer = (input) => {

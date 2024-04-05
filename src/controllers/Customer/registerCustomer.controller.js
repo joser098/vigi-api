@@ -3,7 +3,7 @@ const db_conn = require("../../services/db_conn");
 const getDate = require("../../services/getDate");
 
 const _registerCustomer = async (data) => {
-  const { username, email, password, name, last_name, address, phone,  conditions_accepted} =
+  const { username, email, password, name, last_name, address, phone,  conditions_accepted, DNI} =
     data;
 
   const saltRounds = 5;
@@ -19,6 +19,7 @@ const _registerCustomer = async (data) => {
       last_name,
       phone,
       address,
+      DNI
     },
     conditions_accepted,
     has_order_active: false,
