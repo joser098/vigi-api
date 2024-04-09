@@ -7,6 +7,7 @@ const updateCustomer = require("../handlers/Customer/updateCustomer.handler");
 
 const userAuth = require("../middlewares/userAuth");
 const uploadProfileImage = require("../handlers/Customer/uploadProfileImage.handler");
+const updateFavorite = require("../handlers/Customer/updateFavorite.handler");
 
 const customerRouter = require("express").Router();
 
@@ -41,6 +42,7 @@ customerRouter.post("/", registerCustomer);
 customerRouter.get("/", userAuth, getCustomer);
 customerRouter.post("/login", login);
 customerRouter.patch("/", userAuth, updateCustomer);
+customerRouter.put("/favorite",userAuth, updateFavorite)
 
 
 customerRouter.post("/image", userAuth, upload.single("file"), uploadProfileImage);
