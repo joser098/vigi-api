@@ -9,8 +9,12 @@ const _updateCustomer = async (id, data) => {
 
   const updateQuery = {};
 
-  for (const key in data) {
-    updateQuery[`user_data.${key}`] = data[key];
+  if (data.address) {
+    updateQuery[`user_data.address`] = data.address;
+  } else {
+    for (const key in data) {
+      updateQuery[`user_data.${key}`] = data[key];
+    }
   }
 
   const result = await collection.updateOne(
