@@ -9,6 +9,7 @@ const userAuth = require("../middlewares/userAuth");
 const uploadProfileImage = require("../handlers/Customer/uploadProfileImage.handler");
 const updateFavorite = require("../handlers/Customer/updateFavorite.handler");
 const getFavorites = require("../handlers/Customer/getFavorites.handler");
+const validateCustomerEmail = require("../handlers/Customer/validateCustomerEmail.handler");
 
 const customerRouter = require("express").Router();
 
@@ -43,8 +44,10 @@ customerRouter.post("/", registerCustomer);
 customerRouter.get("/", userAuth, getCustomer);
 customerRouter.post("/login", login);
 customerRouter.patch("/", userAuth, updateCustomer);
-customerRouter.put("/favorite",userAuth, updateFavorite)
-customerRouter.get("/favorite", userAuth, getFavorites)
+customerRouter.put("/favorite",userAuth, updateFavorite);
+customerRouter.get("/favorite", userAuth, getFavorites);
+customerRouter.get("/verification/:hash", validateCustomerEmail);
+
 
 
 customerRouter.post("/image", userAuth, upload.single("file"), uploadProfileImage);

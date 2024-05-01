@@ -2,10 +2,10 @@ const _assignCartToCustomer = require("../../controllers/Customer/assingCartToCu
 const _createNewCart = require("../../controllers/Cart/createNewCart.controller");
 const _registerCustomer = require("../../controllers/Customer/registerCustomer.controller");
 const _validateCustomerExists = require("../../controllers/Customer/validateCustomerExists.controller");
-const {
-  validateCustomer,
-} = require("../../services/zod_schemas/customer_validation.schema");
+const { validateCustomer } = require("../../services/zod_schemas/customer_validation.schema");
+const _createEmailVerificationHash = require("../../controllers/Customer/createEmailVerificationHash.controller");
 const _sendRegisterNotification = require("../../controllers/Notifications/sendNotification");
+const _sendEmailVerification = require("../../controllers/Notifications/sendEmailVerification");
 
 const registerCustomer = async (req, res) => {
   try {
@@ -50,8 +50,11 @@ const registerCustomer = async (req, res) => {
       asssingmentResult,
     };
 
-    //Send notification
-    await _sendRegisterNotification(validation.data.email, "Bienvenido a vigi.cam! 🎉", "register.html");
+    //create hash with userId
+    const verification_hash = await _createEmailVerificationHash(customer.insertedId);
+
+    //Send email verification
+    await _sendEmailVerification(validation.data.email, validation.data.name, `${process.env.MP_BACK_URL}/api/customer/verification/${verification_hash}`);
 
     if (asssingmentResult.acknowledged) {
       return res.status(201).json(res_model);
