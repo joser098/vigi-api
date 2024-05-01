@@ -19,7 +19,9 @@ const _validateEmailWithHash = async (hash) => {
       { $set: { isActive: true }}
     )
 
-    if(result.acknowledged) return true;
+    if(result.acknowledged){ 
+      return true;
+    };
   }
 
   return false;
