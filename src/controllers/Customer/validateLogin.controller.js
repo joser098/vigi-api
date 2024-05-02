@@ -12,7 +12,7 @@ const _validateLogin = async (email, password) => {
   const user_found = await collection.findOne({ email: email });
 
   if(!user_found.isActive){
-    throw new Error("Email not validated")
+    throw new Error("Correo electrónico no verificado")
   }
 
   const validatePassword = !user_found
@@ -20,7 +20,7 @@ const _validateLogin = async (email, password) => {
     : await bcrypt.compare(password, user_found.password);
 
   if (!(user_found && validatePassword)) {
-    throw new Error("Email or password is incorrect");
+    throw new Error("Correo o contraseña incorrectos");
   }
 
   const token = await jwt.sign(user_found, process.env.JWT_SECRET);

@@ -17,9 +17,9 @@ const login = async (req, res) => {
   } catch (error) {
     let status;
     switch (error.message) {
-      case "Email not validated":
+      case "Correo electrónico no verificado":
         status = 401;
-      case "Email or password is incorrect":
+      case "Correo o contraseña incorrectos":
         status = 404;
         break;
       default:
