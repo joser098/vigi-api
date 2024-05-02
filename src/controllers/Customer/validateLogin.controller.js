@@ -11,6 +11,10 @@ const _validateLogin = async (email, password) => {
 
   const user_found = await collection.findOne({ email: email });
 
+  if(!user_found.isActive){
+    throw new Error("Email not validated")
+  }
+
   const validatePassword = !user_found
     ? false
     : await bcrypt.compare(password, user_found.password);
