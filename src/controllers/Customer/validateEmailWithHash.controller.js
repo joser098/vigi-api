@@ -19,7 +19,8 @@ const _validateEmailWithHash = async (hash) => {
       { $set: { isActive: true }}
     )
 
-    if(result.acknowledged){ 
+    if(result.acknowledged){
+      await hash_collection.deleteOne({ hash })
       return true;
     };
   }
