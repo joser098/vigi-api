@@ -4,8 +4,8 @@ const _registerCustomer = require("../../controllers/Customer/registerCustomer.c
 const _validateCustomerExists = require("../../controllers/Customer/validateCustomerExists.controller");
 const { validateCustomer } = require("../../services/zod_schemas/customer_validation.schema");
 const _createEmailVerificationHash = require("../../controllers/Customer/createEmailVerificationHash.controller");
-const _sendRegisterNotification = require("../../controllers/Notifications/sendNotification");
-const _sendEmailVerification = require("../../controllers/Notifications/sendEmailVerification");
+const _sendEmail = require("../../controllers/Notifications/sendEmail");
+const { emailVerificationHtml } = require("../../utils/templates/emails")
 
 const registerCustomer = async (req, res) => {
   try {
@@ -51,10 +51,11 @@ const registerCustomer = async (req, res) => {
     };
 
     //create hash with userId
-    const verification_hash = await _createEmailVerificationHash(customer.insertedId);
+    const verification_hash = await _createEmailVerificationHash(customer.insertedId, "register");
 
     //Send email verification
-    await _sendEmailVerification(validation.data.email, validation.data.name, `${process.env.MP_BACK_URL}/api/customer/verification/${verification_hash}`);
+    const template = emailVerificationHtml(validation.data.name, `${process.env.MP_BACK_URL}/api/customer/verification/${verification_hash}`);
+    await _sendEmail(validation.data.email, "VIGI | Verifica tu correo", template);
 
     if (asssingmentResult.acknowledged) {
       return res.status(201).json(res_model);
