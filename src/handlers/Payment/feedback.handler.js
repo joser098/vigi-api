@@ -5,12 +5,12 @@ const feedback = async (req, res) => {
     if(status == "approved"){
       return res
         .status(200)
-        .redirect(`http://localhost:4321/payment/${payment_id}`);
+        .redirect(`${process.env.CLIENT_URL}/payment/${payment_id}`);
     }
 
-    return res.status(200).redirect("http://localhost:4321/perfil")
+    return res.status(200).redirect(`${process.env.CLIENT_URL}/perfil`)
   } catch (error) {
-    return res.status(400).redirect(`http://vigi.cam`);
+    return res.status(400).redirect(`${process.env.CLIENT_URL}`);
   }
 };
 module.exports = feedback;

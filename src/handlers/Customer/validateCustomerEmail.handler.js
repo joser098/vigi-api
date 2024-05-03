@@ -4,13 +4,13 @@ const validateCustomerEmail = async (req, res) => {
   try {
     const { hash } = req.params;
 
-    const validation = await _validateEmailWithHash(hash);
+    const validation = await _validateEmailWithHash(hash, true);
 
     if(validation){
-      return res.status(200).redirect(`https://www.vigi.cam/email-success`);
+      return res.status(200).redirect(`${process.env.CLIENT_URL}/email-success`);
     }
 
-    return res.redirect(`https://www.vigi.cam/email-error`);
+    return res.redirect(`${process.env.CLIENT_URL}/email-error`);
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message})
   }
