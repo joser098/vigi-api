@@ -6,17 +6,19 @@ const _validateCustomerExists = async (data) => {
     process.env.DB_CUSTOMERS
   );
 
-  const result = await collection.findOne({ email: data.email });
+  const result = await collection.findOne({ email: data.email }, { projection: { _id: 1, "user_data.name": 1 } });
 
   if (result) {
     const obj = {
       userFound: true,
       message: `Ya existe un usuario con este correo ${data.email}`,
+      customer_id: result._id,
+      name: result.user_data.name
     };
 
     return obj;
   }
 
-  return true;
+  return false;
 };
 module.exports = _validateCustomerExists;
