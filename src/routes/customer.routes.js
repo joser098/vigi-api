@@ -10,6 +10,7 @@ const uploadProfileImage = require("../handlers/Customer/uploadProfileImage.hand
 const updateFavorite = require("../handlers/Customer/updateFavorite.handler");
 const getFavorites = require("../handlers/Customer/getFavorites.handler");
 const validateCustomerEmail = require("../handlers/Customer/validateCustomerEmail.handler");
+const forgorPassword = require("../handlers/Customer/forgotPassword.handler");
 
 const customerRouter = require("express").Router();
 
@@ -47,6 +48,7 @@ customerRouter.patch("/", userAuth, updateCustomer);
 customerRouter.put("/favorite",userAuth, updateFavorite);
 customerRouter.get("/favorite", userAuth, getFavorites);
 customerRouter.get("/verification/:hash", validateCustomerEmail);
+customerRouter.post("/forgot-password", forgorPassword);
 
 
 
