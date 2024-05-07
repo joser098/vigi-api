@@ -7,6 +7,7 @@ const getProvinces = require("../handlers/Search/getProvinces.handler");
 const getSimilarProducts = require("../handlers/Search/getSimilarProducts.handler");
 const getSuggest = require("../handlers/Search/getSuggest.handler");
 const validateHash = require("../handlers/Search/validateHash.handler");
+const searchEngine = require("../handlers/Search/searchEngine.handler");
 
 const searchRouter = require("express").Router();
 
@@ -21,6 +22,7 @@ searchRouter.get("/getProducts", getProducts);
 searchRouter.get("/getSimilarProducts", getSimilarProducts);
 searchRouter.get("/validate-hash/:hash", validateHash);
 searchRouter.post("/suggest", getSuggest);
+searchRouter.post("/", searchEngine);
 
 //Const data
 searchRouter.get("/provinces", getProvinces);
