@@ -7,13 +7,31 @@ const getShippingCosts = async (req, res) => {
 
     const customer = await _getCustomerById(customer_id);
 
-    const shippingCost = _getShippingCostsByAddress(customer.user_data.address);
+    const { address } = customer.user_data;
+    const address_str = `${address.address_name} ${address.address_number} ${
+      address.department ? address.department : ""
+    }, ${address.location}. ${address.province}. ${address.zip_code}`;
 
-    const {address} = customer.user_data;
+    if (
+      address.zip_code.startsWith("10") ||
+      address.zip_code.startsWith("11") ||
+      address.zip_code.startsWith("12") ||
+      address.zip_code.startsWith("14")
+    ) {
+      return res
+        .status(200)
+        .json({
+          success: true,
+          data: { address: address_str, shippingCost: 0 },
+        });
+    }
 
-    const address_str = `${address.address_name} ${address.address_number} ${address.department ? address.department : ""}, ${address.location}. ${address.province}. ${address.zip_code}`;
+    const shippingCost = await _getShippingCostsByAddress(address.zip_code);
 
-    res.status(200).json({ success: true, data: { address: address_str, shippingCost } });
+
+    res
+      .status(200)
+      .json({ success: true, data: { address: address_str, shippingCost } });
   } catch (error) {
     return res.status(500).json({ error: error });
   }
