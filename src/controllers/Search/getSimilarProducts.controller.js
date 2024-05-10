@@ -17,7 +17,8 @@ const _getSimilarProducts = async (category, provider) => {
           price: 1,
           details: 1,
           category: 1,
-          dvr_details: 1
+          dvr_details: 1,
+          discount: 1,
         },
       }
     )
