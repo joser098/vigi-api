@@ -8,7 +8,7 @@ const feedback = async (req, res) => {
         .redirect(`${process.env.CLIENT_URL}/payment/${payment_id}`);
     }
 
-    return res.status(200).redirect(`${process.env.CLIENT_URL}/perfil`)
+    return res.status(200).redirect(`${process.env.CLIENT_URL}/profile`)
   } catch (error) {
     return res.status(400).redirect(`${process.env.CLIENT_URL}`);
   }
