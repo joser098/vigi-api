@@ -11,6 +11,10 @@ const _validateLogin = async (email, password) => {
 
   const user_found = await collection.findOne({ email: email });
 
+  if(!user_found){
+    throw new Error(`No existe usuario con email: ${email}`)
+  }
+
   if(!user_found.isActive){
     throw new Error("Correo electrónico no verificado")
   }
