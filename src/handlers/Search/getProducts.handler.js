@@ -1,5 +1,6 @@
 const _getProductsByCategory = require("../../controllers/Search/getProductsByCategory.controller");
 const _getProuctsInPromotion = require("../../controllers/Search/getProductsInPromotion.controller");
+const { formatPrice } = require("../../services/scripts");
 const {
   validateCategoryProduct,
 } = require("../../services/zod_schemas/enums.schema");
@@ -32,6 +33,16 @@ const getProducts = async (req, res) => {
     if (promotion) {
       products = await _getProuctsInPromotion();
     }
+
+    products.map((product) => {
+      if(product.has_promotion && product.discount > 0 && product.discount < 51){
+        const price_formated = formatPrice(product.price, product.discount);
+
+        product.price = price_formated.price_discount;
+        product.price_diferred = price_formated.price_diferred;
+        product.price_original = price_formated.price_original;
+      }
+    });
 
     return res
       .status(200)
