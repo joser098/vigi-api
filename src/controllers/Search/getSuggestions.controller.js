@@ -23,6 +23,8 @@ const _getSuggestions = async (keyword) => {
           model: 1,
           price: 1,
           provider: 1,
+          has_promotion: 1,
+          discount: 1
         },
         sort: { price: 1 },
       }
