@@ -4,9 +4,9 @@ const validateId = require("../../services/zod_schemas/validateId.schema");
 
 const emptyCart = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { cart_id } = req.body;
 
-    const validationId = validateId(id);
+    const validationId = validateId(cart_id);
     if (!validationId.success) {
       return res.status(400).json({
         success: false,
@@ -15,18 +15,17 @@ const emptyCart = async (req, res) => {
     }
 
     //check if cart exists
-    const cart = await _getCartById(id);
+    const cart = await _getCartById(cart_id);
     if (!cart) {
       return res
         .status(404)
         .json({ success: false, message: "Cart not found" });
     }
 
-    const cartEmpty = await _emptyCart(id);
+    const cartEmpty = await _emptyCart(cart_id);
 
     return res.status(200).json({
       success: true,
-      data: cartEmpty,
       message: "Cart emptied successfully",
     });
   } catch (error) {

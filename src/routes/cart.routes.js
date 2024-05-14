@@ -6,7 +6,7 @@ const userAuth = require("../middlewares/userAuth");
 const cartRouter = require("express").Router();
 
 cartRouter.put("/add", userAuth, addProduct);
-cartRouter.put("/empty/:id", emptyCart);
+cartRouter.put("/empty", userAuth, emptyCart);
 cartRouter.get("/", userAuth, getCartById)
 
 module.exports = cartRouter;
