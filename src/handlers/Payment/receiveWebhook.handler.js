@@ -2,6 +2,9 @@ const { MercadoPagoConfig, Payment } = require("mercadopago");
 const _savePaymentOrder = require("../../controllers/Payment/savePaymentOrder.controller");
 const sendNotification = require("../../controllers/Notifications/sendNotification");
 const createOrderHandler = require("../Order/createOrder.handler");
+const _sendEmail = require("../../controllers/Notifications/sendEmail");
+const { successPayHtml } = require("../../utils/templates/emails");
+const _getCustomerById = require("../../controllers/Customer/getCustomerById.controller");
 
 const receiveWeebhook = async (req, res) => {
   try {
@@ -22,19 +25,15 @@ const receiveWeebhook = async (req, res) => {
       createOrderHandler(paymentDetails.id ,paymentDetails.additional_info, paymentDetails.transaction_details.total_paid_amount);
     } else return res.status(204);
 
+    const { user_data } = await _getCustomerById(paymentDetails.additional_info.payer.first_name);
+
+    // Templates
+    const successPay = successPayHtml(user_data.name,paymentDetails.additional_info.items, paymentDetails.transaction_amount, paymentDetails.date_approved, paymentDetails.payment_type_id);
 
     //Enviar correo al cliente y al admin
     if (paymentDetails.status === "approved") {
-      sendNotification(
-        paymentDetails.payer.email,
-        "Pago Exitoso!🥳",
-        "successPay.html"
-      );
-      sendNotification(
-        process.env.ADMIN_EMAIL,
-        "Nueva Venta!🤑",
-        "successPay.html"
-      );
+      _sendEmail(paymentDetails.payer.email, "Pago Exitoso | VIGI", successPay);
+      _sendEmail(process.env.ADMIN_EMAIL, "Nueva venta!", successPay);
     }
     
     return res.status(204);

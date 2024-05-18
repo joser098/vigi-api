@@ -1,3 +1,5 @@
+const getDate = require("../../services/getDate");
+
 const emailVerificationHtml = (name, url) => {
   return `
     <!DOCTYPE html>
@@ -50,7 +52,64 @@ const resetPasswordHtml = (name, url) => {
     `;
 };
 
+const successPayHtml = (name, products, total_payed, date, payment_method) => {
+    const productRows = products.map(product => `
+    <tr style="border: 1px;">
+        <td style="text-align: center;">${product.quantity}</td>
+        <td style="text-align: center;">${product.name}</td>
+        <td style="text-align: center;">$${product.unit_price}</td>
+    </tr>
+    `).join(''); style="text-align: center;";
+
+    const fecha = date.split("T")[0].split("-").reverse().join("/");
+    const metodo_pago = payment_method.includes("debit") ? "Tarjeta de débito" : payment_method.includes("credit") ? "Tarjeta de crédito" : "Dinero en cuenta";
+
+    return `
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirmación de pago y aprobación de compra</title>
+    </head>
+    <body>
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2>Confirmación de pago y aprobación de compra</h2>
+        <p>Estimado <span style="font-weight: bold;">${name}</span>,</p>
+        <p>Es un placer informarte que hemos recibido con éxito el pago correspondiente a tu compra realizada el ${fecha}. Queremos confirmarte que el pago ha sido procesado correctamente y tu pedido ha sido aprobado.</p>
+        <h3>Detalles de la compra:</h3>
+        <ul>
+        <li style="margin: 10px auto;">Producto(s):
+        <table>
+        <tr style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 10px; background-color: #1E053F; color: white">
+        <th style="padding: 10px 15px; text-align: center;">Cantidad</th>
+        <th style="padding: 10px 15px; text-align: center;">Producto</th>
+        <th style="padding: 10px 15px; text-align: center;">Precio</th>
+        </tr>
+        ${productRows}
+        </table>
+        </li>
+        <li>Total pagado: <span style="font-weight: bold;">$${total_payed}</span></li>
+        <li>Fecha de la compra: <span style="font-weight: bold;"> ${fecha}</span></li>
+        <li>Método de pago: <span style="font-weight: bold;"> ${metodo_pago}</span></li>
+        </ul>
+        <p>Tu satisfacción es nuestra prioridad, por lo que nos esforzamos por brindarte la mejor experiencia de compra posible. Nuestro equipo está trabajando diligentemente para preparar tu pedido y asegurarse de que sea entregado en el menor tiempo posible.</p>
+        <p>Si tienes alguna pregunta o inquietud sobre tu compra, no dudes en ponerte en contacto con nuestro equipo de atención al cliente. Estamos aquí para ayudarte en todo lo que necesites.</p>
+        <p>Agradecemos sinceramente tu preferencia y esperamos que disfrutes de tus productos tanto como nosotros disfrutamos de servirte.</p>
+        <p>¡Gracias por elegirnos!</p>
+        <p>Atentamente,</p>
+        <p>VIGI</p>
+        <p>contacto@vigi.cam</p>
+    </div>
+    </body>
+    </html>
+    `
+};
+
+
+
 module.exports = {
     emailVerificationHtml,
-    resetPasswordHtml
-}
+    resetPasswordHtml,
+    successPayHtml
+};
