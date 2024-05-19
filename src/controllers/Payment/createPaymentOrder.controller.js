@@ -1,6 +1,7 @@
 const { MercadoPagoConfig, Preference } = require("mercadopago");
+const crypto = require("node:crypto");
 
-const _createPaymentOrder = async (customer_id, items, shipments) => {
+const _createPaymentOrder = async (payer, items, shipments) => {
   // Agrega credenciales
   const client = new MercadoPagoConfig({
     accessToken: process.env.MP_ACCESS_TOKEN,
@@ -35,9 +36,19 @@ const _createPaymentOrder = async (customer_id, items, shipments) => {
         ],
       },
       payer: {
-        name: customer_id,
+        name: payer.user_data.name,
+        surname: payer._id,
+        email: payer.email,
+        address: {
+          zip_code: payer.user_data.address.zip_code,
+          street_name: payer.user_data.address.address_name,
+          street_number: payer.user_data.address.address_number,
+        }
       },
       shipments: shipments,
+      statement_descriptor: "Vigi.cam",
+      external_reference: `ER-${crypto.randomUUID()}`,
+      binary_mode: true,
     },
   });
 
