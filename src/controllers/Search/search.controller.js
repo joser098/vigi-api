@@ -11,9 +11,7 @@ const _search = async (keyword) => {
         $or: [
           { model: { $in: [keyworReg] } },
           { tags: { $in: [keyworReg] } },
-          { description: { $in: [keyworReg] } },
-          { provider: { $in: [keyworReg] } },
-          { category: { $in: [keyworReg] } },
+          { title: { $in: [keyworReg] } },
         ],
       },
       {

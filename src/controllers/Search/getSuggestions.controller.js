@@ -12,9 +12,9 @@ const _getSuggestions = async (keyword) => {
     .find(
       {
         $or: [
-          { description: { $in: [keyworReg] } },
           { model: { $in: [keyworReg] } },
           { tags: { $in: [keyworReg] } },
+          { title: { $in: [keyworReg] } },
         ],
       },
       {
