@@ -10,4 +10,25 @@ const formatPrice = (price, discount) => {
   }
 };
 
-module.exports = { formatPrice };
+function formatCategoryQuery(category) {
+  if (category == "interior" || category == "exterior") {
+    const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1);
+    return {"details.location": capitalizedCategory };
+    
+  };
+
+  if(category == "batería"){
+    return {"details.power_type": {
+      $regex: "Bateria",
+      $options: "i"
+    }}
+  };
+
+  if(category == "análogas"){
+    return {"details.anlogue": true}
+  }
+
+  return {category: category };
+}
+
+module.exports = { formatPrice, formatCategoryQuery };
