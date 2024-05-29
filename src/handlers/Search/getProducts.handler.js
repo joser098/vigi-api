@@ -7,7 +7,7 @@ const {
 
 const getProducts = async (req, res) => {
   try {
-    const { category, promotion } = req.query;
+    const { category, promotion, order } = req.query;
     if (!category && !promotion) {
       return res
         .status(400)
@@ -27,7 +27,7 @@ const getProducts = async (req, res) => {
         });
       }
 
-      products = await _getProductsByCategory(category);
+      products = await _getProductsByCategory(category, order);
     }
 
     if (promotion) {
