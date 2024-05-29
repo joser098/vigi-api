@@ -56,7 +56,7 @@ const receiveWeebhook = async (req, res) => {
 
     return res.status(204).send();
   } catch (error) {
-    console.eroor(error);
+    console.error(error);
     return res.status(400).json({ message: error.message });
   }
 };
