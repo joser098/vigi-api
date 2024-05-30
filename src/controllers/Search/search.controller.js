@@ -24,6 +24,7 @@ const _search = async (keyword) => {
           category: 1,
           details: 1,
           dvr_details: 1,
+          discount: 1
           
         },
         sort: {
