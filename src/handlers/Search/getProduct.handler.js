@@ -1,6 +1,6 @@
 const _getProductById = require("../../controllers/Search/getProductById.controller");
 const _getProductByModel = require("../../controllers/Search/getProductByModel.controller");
-const { formatPrice } = require("../../services/scripts");
+const { setPromotionsToProduct } = require("../../services/scripts");
 const { productDic } = require("../../utils/dictionary");
 
 const getProduct = async (req, res) => {
@@ -18,13 +18,7 @@ const getProduct = async (req, res) => {
       product = await _getProductByModel(model);
     }
 
-    if(product.has_promotion && product.discount > 0 && product.discount < 51){
-      const price_formated = formatPrice(product.price, product.discount);
-
-      product.price = price_formated.price_discount;
-      product.price_diferred = price_formated.price_diferred;
-      product.price_original = price_formated.price_original;
-    }
+    setPromotionsToProduct(product);
 
     return res.status(200).json({
       success: true,

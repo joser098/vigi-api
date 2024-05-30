@@ -1,4 +1,5 @@
 const _getAllProducts = require("../../controllers/Search/getAllproducts.controller");
+const { setPromotionsToProduct } = require("../../services/scripts");
 
 const getFavorites = async (req, res) => {
   try {
@@ -10,6 +11,10 @@ const getFavorites = async (req, res) => {
     const favorites = allProducts.filter((product) =>
       product.favorites.includes(customer_id)
     );
+
+    favorites.map((product) => {
+      setPromotionsToProduct(product);
+    });
 
     return res.status(200).json({ success: true, data: favorites });
   } catch (error) {
