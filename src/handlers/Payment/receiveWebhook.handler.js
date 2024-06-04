@@ -5,6 +5,7 @@ const _sendEmail = require("../../controllers/Notifications/sendEmail");
 const { successPayHtml } = require("../../utils/templates/emails");
 const _getCustomerById = require("../../controllers/Customer/getCustomerById.controller");
 const _getOrderByPaymentId = require("../../controllers/Order/getOrderByPaymentId.controller");
+const _emptyCart = require("../../controllers/Cart/emptyCart.controller");
 
 const receiveWeebhook = async (req, res) => {
   try {
@@ -45,7 +46,8 @@ const receiveWeebhook = async (req, res) => {
       paymentDetails.additional_info.items,
       paymentDetails.transaction_amount,
       paymentDetails.date_approved,
-      paymentDetails.payment_type_id
+      paymentDetails.payment_type_id,
+      paymentDetails.id
     );
 
     //Send email notification to admin and customer about purchase
@@ -53,6 +55,9 @@ const receiveWeebhook = async (req, res) => {
       await _sendEmail(paymentDetails.payer.email, "Pago Exitoso | VIGI", successPay);
       await _sendEmail(process.env.ADMIN_EMAIL, "Nueva venta!", successPay);
     }
+
+    //Empty Cart
+    _emptyCart(customer.cart_id)
 
     return res.status(204).send();
   } catch (error) {
