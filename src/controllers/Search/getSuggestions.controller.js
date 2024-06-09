@@ -16,6 +16,7 @@ const _getSuggestions = async (keyword) => {
           { tags: { $in: [keyworReg] } },
           { title: { $in: [keyworReg] } },
         ],
+        is_active: true
       },
       {
         projection: {

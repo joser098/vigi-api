@@ -28,7 +28,7 @@ function formatCategoryQuery(category) {
     return {"details.anlogue": true}
   }
 
-  return {category: category };
+  return {category: category, is_active: true };
 }
 
 

@@ -8,6 +8,7 @@ const _getSimilarProducts = async (category, provider) => {
       {
         category: category,
         provider: provider,
+        is_active: true
       },
       {
         projection: {
