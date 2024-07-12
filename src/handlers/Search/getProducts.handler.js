@@ -16,7 +16,7 @@ const getProducts = async (req, res) => {
 
     let products = [];
 
-    if (category) {
+    if (category && category !== "promociones") {
       const validation = validateCategoryProduct(category);
       if (!validation.success){
         return res
@@ -30,8 +30,8 @@ const getProducts = async (req, res) => {
       products = await _getProductsByCategory(category, order);
     }
 
-    if (promotion) {
-      products = await _getProuctsInPromotion();
+    if (promotion ||  category == "promociones") {
+      products = await _getProuctsInPromotion(order);
     }
 
     products.map((product) => {
