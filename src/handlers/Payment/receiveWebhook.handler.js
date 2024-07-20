@@ -1,11 +1,11 @@
 const { MercadoPagoConfig, Payment } = require("mercadopago");
 const _savePaymentOrder = require("../../controllers/Payment/savePaymentOrder.controller");
 const createOrderHandler = require("../Order/createOrder.handler");
-const _sendEmail = require("../../controllers/Notifications/sendEmail");
 const { successPayHtml } = require("../../utils/templates/emails");
 const _getCustomerById = require("../../controllers/Customer/getCustomerById.controller");
 const _getOrderByPaymentId = require("../../controllers/Order/getOrderByPaymentId.controller");
 const _emptyCart = require("../../controllers/Cart/emptyCart.controller");
+const sendEmailSES = require("../../controllers/Notifications/sendEmailSES");
 
 const receiveWeebhook = async (req, res) => {
   try {
@@ -52,8 +52,8 @@ const receiveWeebhook = async (req, res) => {
 
     //Send email notification to admin and customer about purchase
     if (!order_exists && paymentDetails.status === "approved") {
-      await _sendEmail(paymentDetails.payer.email, "Pago Exitoso | VIGI", successPay);
-      await _sendEmail(process.env.ADMIN_EMAIL, "Nueva venta!", successPay);
+      await sendEmailSES(paymentDetails.payer.email, "noreply@vigi.cam", "Pago Exitoso | VIGI", successPay);
+      await sendEmailSES(process.env.ADMIN_EMAIL, "noreply@vigi.cam", "Nueva venta!", successPay);
     }
 
     //Empty Cart

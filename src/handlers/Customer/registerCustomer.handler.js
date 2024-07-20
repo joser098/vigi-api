@@ -4,8 +4,8 @@ const _registerCustomer = require("../../controllers/Customer/registerCustomer.c
 const _validateCustomerExists = require("../../controllers/Customer/validateCustomerExists.controller");
 const { validateCustomer } = require("../../services/zod_schemas/customer_validation.schema");
 const _createEmailVerificationHash = require("../../controllers/Customer/createEmailVerificationHash.controller");
-const _sendEmail = require("../../controllers/Notifications/sendEmail");
-const { emailVerificationHtml } = require("../../utils/templates/emails")
+const { emailVerificationHtml } = require("../../utils/templates/emails");
+const sendEmailSES = require("../../controllers/Notifications/sendEmailSES");
 
 const registerCustomer = async (req, res) => {
   try {
@@ -55,7 +55,7 @@ const registerCustomer = async (req, res) => {
 
     //Send email verification
     const template = emailVerificationHtml(validation.data.name, `${process.env.MP_BACK_URL}/api/customer/verification/${verification_hash}`);
-    await _sendEmail(validation.data.email, "VIGI | Verifica tu correo", template);
+    await sendEmailSES(validation.data.email, "verification@vigi.cam" ,"VIGI | Verifica tu correo", template);
 
     if (asssingmentResult.acknowledged) {
       return res.status(201).json(res_model);
