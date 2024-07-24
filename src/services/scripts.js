@@ -41,4 +41,20 @@ function setPromotionsToProduct(product) {
     product.price_original = price_formated.price_original;
   }
 }
-module.exports = { formatPrice, formatCategoryQuery, setPromotionsToProduct };
+
+function formatItemsToNaveBody (products) {
+  return products.map(product => {
+    return {
+      id: product.id,
+      name: product.title,
+      description: product.title,
+      quantity: product.quantity,
+      unit_price: {
+        currency: "ARS",
+        value: product.unit_price.toString(),
+      } 
+    }
+  })
+}
+
+module.exports = { formatPrice, formatCategoryQuery, setPromotionsToProduct, formatItemsToNaveBody };
