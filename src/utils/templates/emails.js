@@ -63,7 +63,7 @@ const successPayHtml = (name, products, total_payed, date, payment_method, nroOr
     const productRows = products.map(product => `
     <tr style="border: 1px;">
         <td style="text-align: center;">${product.quantity}</td>
-        <td style="text-align: center;">${product.name}</td>
+        <td style="text-align: center;">${product.name || product.title}</td>
         <td style="text-align: center;">$${product.unit_price}</td>
     </tr>
     `).join(''); style="text-align: center;";
