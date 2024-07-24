@@ -1,13 +1,17 @@
 const { formatItemsToNaveBody } = require("../../../services/scripts");
+const crypto = require("node:crypto");
+const _savePaymentOrder = require("../savePaymentOrder.controller");
+const getDate = require("../../../services/getDate");
 
 const _createPaymentOrderNave = async (bearer_token, payer, items, amount_to_pay) => {
     const url = process.env.NAVE_CREATE_PAYMENT_ORDER_URL;
+    const order_id = crypto.randomUUID();
 
     const _body = {
         platform: "vigi",
         store_id: "store_1_vigi",
         callback_url: "https://www.vigi.cam/profile#purchases",
-        order_id: "XXXXXXXXXXXX",
+        order_id,
         mobile: false, //TODO: Get from props
         payment_request: {
             transactions: [
@@ -49,6 +53,24 @@ const _createPaymentOrderNave = async (bearer_token, payer, items, amount_to_pay
     });
 
     const data = await response.json();
+
+    if(data){
+        const obj = {
+            id: data.data.payment_request_id,
+            order_id,
+            status: `CREATED AT ${getDate()}`,
+            payer: {
+                id: payer._id,
+                name: payer.user_data.name,
+                email: payer.email,
+                phone: payer.user_data.phone,
+                address: payer.user_data.address
+            },
+            items
+
+        }
+        await _savePaymentOrder(null,obj);
+    }
 
     return data.data;
 };
