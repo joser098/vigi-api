@@ -17,7 +17,7 @@ const receiveWeebhook = async (req, res) => {
     const payment = req.query;
 
     if (payment.type !== "payment") {
-      return res.status(204).send();
+      return res.status(200).send();
     }
 
     const paymentDetails = await mp_payment.get({
@@ -59,7 +59,7 @@ const receiveWeebhook = async (req, res) => {
     //Empty Cart
     _emptyCart(customer.cart_id)
 
-    return res.status(204).send();
+    return res.status(200).send();
   } catch (error) {
     console.error(error);
     return res.status(400).json({ message: error.message });
