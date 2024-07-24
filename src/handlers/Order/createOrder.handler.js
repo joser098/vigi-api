@@ -20,7 +20,7 @@ const createOrderHandler = async (payment_id, data, amount_paid) => {
       customer_id: data.payer.last_name,
       items: data.items,
       ip_address: data.ip_address,
-      amount_paid,
+      amount_paid: Number(amount_paid),
       status: "En preparación",
       date: getDate()
     }
