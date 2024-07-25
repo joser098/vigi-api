@@ -17,7 +17,7 @@ const createOrderHandler = async (payment_id, data, amount_paid) => {
 
     const order_model = {
       payment_id,
-      customer_id: data.payer.last_name,
+      customer_id: data.payer.last_name.toString(),
       items: data.items,
       ip_address: data.ip_address,
       amount_paid: Number(amount_paid),
