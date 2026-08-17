@@ -1,20 +1,27 @@
 const { Resend } = require("resend");
 
-const _sendEmail = async (email, subject, template) => {
-  try {
-    const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-    const response = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL,
-      to: email,
+const sendEmail = async (toEmail, fromEmail, subject, template) => {
+  try {
+    const { data, error } = await resend.emails.send({
+      from: fromEmail ?? process.env.RESEND_FROM_EMAIL,
+      to: toEmail,
       subject: subject,
       html: template,
     });
 
-    return response;
-  } catch (error) {
-    return error;
+    // Resend returns the error in the response instead of throwing.
+    if (error) {
+      console.log(error);
+      return error;
+    }
+
+    return data;
+  } catch (caught) {
+    console.log(caught);
+    return caught;
   }
 };
 
-module.exports = _sendEmail;
+module.exports = sendEmail;
