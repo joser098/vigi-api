@@ -1,0 +1,185 @@
+# VIGI API
+
+Backend del e-commerce de cámaras de seguridad vigi.cam (Argentina).
+
+El frontend es un proyecto aparte: **`../vigi-app`** (Astro + Tailwind, deploy en
+Vercel). Los dos repos son carpetas hermanas bajo `Desktop/APP/`. Cualquier
+cambio en la forma de una respuesta de la API obliga a un cambio allá.
+
+## Comandos
+
+```bash
+npm run dev     # nodemon
+npm start       # node index.js
+npm test        # jest --detectOpenHandles
+```
+
+## Arquitectura
+
+Tres capas, estrictas:
+
+```
+routes/*.routes.js  →  handlers/<Dominio>/*.handler.js  →  repositories/<dominio>.repository.js
+```
+
+- **routes** — montan paths y aplican el middleware `userAuth`.
+- **handlers** — manejan `req`/`res`, orquestan varias operaciones de datos,
+  arman la respuesta. Es la única capa que conoce HTTP.
+- **repositories** — todo el acceso a datos de un dominio en un archivo. Son la
+  única capa que conoce el dialecto de la base.
+
+### Repositorios
+
+Todo el acceso a datos pasa por `src/repositories/`. MongoDB ya no existe en
+ninguna parte del código.
+
+| Repositorio | Cubre |
+|---|---|
+| `customer.repository.js` | clientes, direcciones, favoritos |
+| `verification.repository.js` | hashes de verificación y reset |
+| `cart.repository.js` | carrito e ítems |
+| `product.repository.js` | catálogo, búsqueda, facets |
+| `order.repository.js` | órdenes e ítems de orden |
+| `payment.repository.js` | órdenes de pago de MP y Nave |
+| `reference.repository.js` | provincias, carrusel |
+
+Lo que queda en `src/controllers/` **no toca la base**: son adaptadores de APIs
+externas (Andreani, Resend, Mercado Pago, Nave).
+
+### Precios
+
+Cuatro columnas, y solo la última se lee desde la API:
+
+| Columna | Qué es |
+|---|---|
+| `cost` | costo del proveedor, lo escribe el importador |
+| `margin_pct` | margen de referencia, 30 por defecto |
+| `price_override` | precio fijado a mano; `NULL` = usar el margen |
+| `price` | resultado, lo mantiene el trigger `products_set_price` |
+| `effective_price` | `price` con el descuento aplicado, columna generada |
+
+Actualizar `cost` recalcula `price` solo, **salvo** si hay `price_override`.
+Nunca escribir `price` a mano: lo pisa el trigger.
+
+El precio con descuento es una **columna generada**, no un cálculo en JS. Los
+repositorios devuelven `effective_price` como `price`. Nunca volver a descontar
+en JavaScript: rompe el ordenamiento por precio.
+
+### Catálogo
+
+Se importa de la lista del proveedor (Google Sheet público):
+
+```bash
+node db/import/import-catalogue.js            # simulacro
+node db/import/import-catalogue.js --apply    # escribe
+```
+
+El mapeo de secciones a categorías vive en `db/import/catalogue-map.js` — es lo
+que hay que editar cuando el proveedor agrega o renombra una sección. El
+importador corta y reporta si encuentra una sección desconocida, en vez de
+adivinar.
+
+Reimportar **actualiza** costo y ficha, y **no toca** `price_override`,
+`margin_pct`, `discount`, `has_promotion`, `thumbnail` ni `is_active`.
+
+Los precios de checkout salen **siempre** del carrito en la base, nunca del
+request. Ver `handlers/Payment/createPaymentOrder.handler.js`.
+
+Migrar un dominio = consolidar sus controllers en un solo
+`repositories/<dominio>.repository.js` con SQL, actualizar los handlers que lo
+consumen, y borrar la carpeta de controllers.
+
+### Acceso a datos
+
+- `db/client.js` — pool de `pg` contra Supabase. Expone `query(text, params)`,
+  `withTransaction(fn)` y `closeConnection()`. **Nunca crear un Pool nuevo.**
+  Dentro de `withTransaction` hay que usar el client que recibe `fn`, no
+  `query()`, o la sentencia corre fuera de la transacción.
+- `db/result.js` — `created()` / `updated()` normalizan las escrituras a
+  `{ matched, modified, inserted, id }`. Los handlers nunca deben leer campos
+  del driver. Agregar `returning id` para que `id` venga poblado.
+- El schema vive en `db/migrations/`, ya aplicado en Supabase.
+- `numeric` se parsea a float en `db/client.js` para que la API siga mandando
+  números y no strings.
+
+Conexión: `DATABASE_URL` en `.env`.
+
+Entrypoint: `index.js` → `src/app.js` (CORS por whitelist, router bajo `/api`,
+estáticos de `uploads/` en `/public`).
+
+### Convenciones
+
+- Los controllers se importan con guion bajo: `const _getX = require(...)`.
+- `userAuth` (`src/middlewares/userAuth.js`) verifica el JWT e **inyecta
+  `customer_id` y `cart_id` en `req.body` y `req.params`**. Por eso los handlers
+  leen el id del cliente desde el body y no de un parámetro de ruta.
+- Validación con Zod en `src/services/zod_schemas/`. Se usa solo en algunos
+  endpoints, no en todos.
+- Los remitentes de email salen de `src/utils/senders.js`, que los arma desde
+  `EMAIL_DOMAIN`. **Nunca hardcodear una dirección en un handler.**
+
+## Dominios
+
+| Ruta | Auth | Qué hace |
+|---|---|---|
+| `/api/search` | pública | productos, órdenes, sugerencias, carrusel, provincias |
+| `/api/customer` | mixta | registro, login, perfil, favoritos, verificación de email, reset de password, foto de perfil |
+| `/api/cart` | JWT | agregar producto, vaciar, obtener |
+| `/api/payment` | mixta | crear orden (MP o Nave), 2 webhooks, feedback |
+| `/api/logistic` | JWT | costo de envío por código postal (Andreani) |
+| `/api/order` | JWT | órdenes del cliente |
+
+### Pagos
+
+Dos pasarelas. `createPaymentOrder.handler.js` bifurca según `method == "nv"`:
+Nave pide un bearer token OAuth y devuelve `checkout_url` (normalizado a
+`init_point`); si no, va a Mercado Pago. Cada una tiene su webhook, que guarda la
+orden de pago, crea la orden, manda emails al comprador y al `ADMIN_EMAIL`, y
+vacía el carrito.
+
+Detalle heredado: el `customer_id` viaja dentro de `payer.last_name` en el
+payload de Mercado Pago.
+
+## Migración de stack en curso
+
+| Paso | Estado |
+|---|---|
+| AWS SES → Resend | hecho |
+| AWS S3 → Cloudflare R2 | hecho |
+| Schema Postgres (Supabase) | hecho, corrido en Supabase |
+| Capa de repositorio | **pendiente, es el próximo paso** |
+| Carga del catálogo | pendiente |
+| Swap Mongo → Postgres | pendiente |
+
+**El código todavía habla con MongoDB.** El schema Postgres vive en
+`db/migrations/` y ya está aplicado en Supabase, pero ningún controller lo usa.
+
+Antes de encarar el swap, leer **`db/CUTOVER_NOTES.md`**: lista los cambios de
+código que rompen contra el schema nuevo. No aplicarlos antes de tiempo — nada
+los verifica mientras los handlers sigan contra Mongo.
+
+El plan es meter primero una capa de repositorio **contra Mongo**, sin cambio de
+comportamiento, para que el swap final no sea un big-bang de 39 archivos.
+
+## Base de datos
+
+Hoy: MongoDB Atlas con el driver nativo, sin ODM. `db_conn(db, collection)`
+abre una conexión **por llamada** (`src/services/db_conn.js`) — es una de las
+cosas que la capa de repositorio tiene que resolver.
+
+Los nombres de colección salen de variables de entorno (`DB_PRODUCT`,
+`DB_ORDERS`, `DB_CUSTOMERS`, `DB_CARTS`, `PAYMENT_ORDERS`, `DB_VERIFY_HASH`).
+
+## Entorno
+
+`.env` (gitignored). Grupos: `DB_*` (Mongo), `JWT_SECRET`, `MP_*` (Mercado
+Pago), `NAVE_*`, `RESEND_API_KEY` + `EMAIL_DOMAIN`, `R2_*`, `CLIENT_URL`,
+`ADMIN_EMAIL`.
+
+## Cosas rotas conocidas
+
+- `getProvinces.controller.js` usa `process.env.DB_PROVINCES`, que nunca se
+  definió.
+- `sendNotification.js` no lo llama nadie.
+- `getFavorites.handler.js` trae **todos** los productos y filtra en JS.
+- `customers.has_order_active` se pone en `true` y nunca vuelve a `false`.
