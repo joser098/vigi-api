@@ -6,6 +6,7 @@ const { validateCustomer } = require("../../services/zod_schemas/customer_valida
 const _createEmailVerificationHash = require("../../controllers/Customer/createEmailVerificationHash.controller");
 const { emailVerificationHtml } = require("../../utils/templates/emails");
 const sendEmail = require("../../controllers/Notifications/sendEmail");
+const senders = require("../../utils/senders");
 
 const registerCustomer = async (req, res) => {
   try {
@@ -55,7 +56,7 @@ const registerCustomer = async (req, res) => {
 
     //Send email verification
     const template = emailVerificationHtml(validation.data.name, `${process.env.MP_BACK_URL}/api/customer/verification/${verification_hash}`);
-    await sendEmail(validation.data.email, "verification@vigi.cam" ,"VIGI | Verifica tu correo", template);
+    await sendEmail(validation.data.email, senders.verification ,"VIGI | Verifica tu correo", template);
 
     if (asssingmentResult.acknowledged) {
       return res.status(201).json(res_model);

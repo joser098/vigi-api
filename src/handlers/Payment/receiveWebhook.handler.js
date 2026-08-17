@@ -6,6 +6,7 @@ const _getCustomerById = require("../../controllers/Customer/getCustomerById.con
 const _getOrderByPaymentId = require("../../controllers/Order/getOrderByPaymentId.controller");
 const _emptyCart = require("../../controllers/Cart/emptyCart.controller");
 const sendEmail = require("../../controllers/Notifications/sendEmail");
+const senders = require("../../utils/senders");
 
 const receiveWeebhook = async (req, res) => {
   try {
@@ -52,8 +53,8 @@ const receiveWeebhook = async (req, res) => {
 
     //Send email notification to admin and customer about purchase
     if (!order_exists && paymentDetails.status === "approved") {
-      await sendEmail(paymentDetails.payer.email, "noreply@vigi.cam", "Pago Exitoso | VIGI", successPay);
-      await sendEmail(process.env.ADMIN_EMAIL, "noreply@vigi.cam", "Nueva venta!", successPay);
+      await sendEmail(paymentDetails.payer.email, senders.noreply, "Pago Exitoso | VIGI", successPay);
+      await sendEmail(process.env.ADMIN_EMAIL, senders.noreply, "Nueva venta!", successPay);
     }
 
     //Empty Cart

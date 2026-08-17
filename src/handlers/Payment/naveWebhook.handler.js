@@ -1,4 +1,5 @@
 const sendEmail = require("../../controllers/Notifications/sendEmail");
+const senders = require("../../utils/senders");
 const _getPayment = require("../../controllers/Payment/getPayment.controller");
 const _savePaymentOrder = require("../../controllers/Payment/savePaymentOrder.controller");
 const { successPayHtml } = require("../../utils/templates/emails");
@@ -53,8 +54,8 @@ const naveWebhook = async (req, res) => {
       );
     
     //Send email notification to admin and customer about purchase  
-    await sendEmail(paymentOrder.payer.email, "noreply@vigi.cam", "Pago Exitoso | VIGI", successPay);
-    await sendEmail(process.env.ADMIN_EMAIL, "noreply@vigi.cam", "Nueva venta!", successPay);
+    await sendEmail(paymentOrder.payer.email, senders.noreply, "Pago Exitoso | VIGI", successPay);
+    await sendEmail(process.env.ADMIN_EMAIL, senders.noreply, "Nueva venta!", successPay);
 
     return res.status(200).send();
   } catch (error) {

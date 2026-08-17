@@ -1,6 +1,7 @@
 const _createEmailVerificationHash = require("../../controllers/Customer/createEmailVerificationHash.controller");
 const _validateCustomerExists = require("../../controllers/Customer/validateCustomerExists.controller");
 const sendEmail = require("../../controllers/Notifications/sendEmail");
+const senders = require("../../utils/senders");
 const { resetPasswordHtml } = require("../../utils/templates/emails");
 
 const forgorPassword = async (req, res) => {
@@ -18,7 +19,7 @@ const forgorPassword = async (req, res) => {
 
     //Send email to reset password
     const template = resetPasswordHtml(customerExits.name, `${process.env.CLIENT_URL}/new-password/${hash}`)
-    await sendEmail(email, "noreply@vigi.cam", "VIGI | Restablecer tu contraseña", template);
+    await sendEmail(email, senders.noreply, "VIGI | Restablecer tu contraseña", template);
 
     res.status(200).json({ success: true, message: "¡Listo! Por favor, revisa tu correo electrónico. Hemos enviado un mensaje con instrucciones detalladas sobre cómo restablecer tu contraseña."})
   } catch (error) {
