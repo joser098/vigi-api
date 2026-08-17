@@ -8,29 +8,41 @@ const orderStatusSchema = z.enum([
    "entregado",
 ]);
 
-// Includes the browse facets, which the endpoint accepts as a category param
-// even though they resolve against their own columns.
+// Canonical form: lowercase, unaccented. The nav in vigi-app links to
+// /category/bateria, /category/Kits and /category/analogas, so the input is
+// normalised before validating rather than enumerating every spelling — nobody
+// types accents into a URL.
 const categoryProductSchema = z.enum([
    "camaras",
    "alarmas",
    "almacenamiento",
    "kits",
    "porteros",
+   // Browse facets: not categories, they resolve against their own columns.
    "interior",
    "exterior",
-   "batería",
-   "análogas",
+   "bateria",
+   "analogas",
 ]);
+
+const normalizeCategory = (value) =>
+   String(value ?? "")
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "")
+      .trim()
+      .toLowerCase();
 
 const validateOrderStatus = (status) => {
    return orderStatusSchema.safeParse(status);
 };
 
+// `data` comes back canonical, so repositories only ever see the normalised form.
 const validateCategoryProduct = (category) => {
-   return categoryProductSchema.safeParse(category);
+   return categoryProductSchema.safeParse(normalizeCategory(category));
 };
 
 module.exports = {
    validateOrderStatus,
-   validateCategoryProduct
+   validateCategoryProduct,
+   normalizeCategory,
 };

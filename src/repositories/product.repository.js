@@ -17,8 +17,15 @@ const PRODUCT_FIELDS = `
   p.location,
   p.power_type,
   p.is_analogue,
+  p.description,
+  p.others,
+  p.gallery,
   p.details,
   p.dvr_details,
+  p.portero_details,
+  p.alarm_details,
+  p.storage_details,
+  p.kit_details,
   p.effective_price as price,
   case when p.has_promotion and p.discount between 1 and 50
        then p.price end as price_original,
@@ -28,12 +35,11 @@ const PRODUCT_FIELDS = `
 
 // interior, exterior, bateria and analogas are browse facets, not categories.
 // They resolve against their own columns now instead of the details JSONB.
+// Keys are the canonical form produced by normalizeCategory.
 const FACETS = {
   interior: "p.location = 'interior'",
   exterior: "p.location = 'exterior'",
-  batería: "p.power_type = 'bateria'",
   bateria: "p.power_type = 'bateria'",
-  análogas: "p.is_analogue",
   analogas: "p.is_analogue",
 };
 
@@ -123,25 +129,46 @@ const findSimilar = async (category, provider) => {
 // Matching stays "contains", same as the old regex, so nothing that used to be
 // found disappears. What changes is the ordering: results come back by trigram
 // similarity instead of by price, so the closest match leads.
+// Cada término tiene que aparecer en algún lado, no la frase completa: el
+// proveedor escribe "Exterior | Plastica | Domo", así que buscar "domo
+// exterior" como frase no encontraría nada.
+//
+// La descripción entra en el match pero no en el ranking: los títulos del
+// catálogo son "Marca MODELO", así que sin ella buscar "camara" no devuelve
+// nada. Para ordenar sigue mandando título y modelo, que identifican al
+// producto.
 const SEARCH_WHERE = `
   p.is_active
   and (
-    p.title ilike $2
-    or p.model ilike $2
-    or exists (select 1 from unnest(p.tags) tag where tag ilike $2)
+    select bool_and(
+      p.title ilike '%' || term || '%'
+      or p.model ilike '%' || term || '%'
+      or p.description ilike '%' || term || '%'
+      or exists (select 1 from unnest(p.tags) tag where tag ilike '%' || term || '%')
+    )
+    from unnest($2::text[]) as term
   )
 `;
 
 const RELEVANCE = `greatest(similarity(p.title, $1), similarity(p.model, $1))`;
 
+const terms = (keyword) =>
+  String(keyword ?? "")
+    .split(/\s+/)
+    .map((t) => t.trim())
+    .filter(Boolean);
+
 const search = async (keyword, limit) => {
+  const parts = terms(keyword);
+  if (parts.length === 0) return [];
+
   const { rows } = await query(
     `select ${PRODUCT_FIELDS}
        from products p
       where ${SEARCH_WHERE}
       order by ${RELEVANCE} desc, p.effective_price asc
       limit $3`,
-    [keyword, `%${keyword}%`, limit ?? 100]
+    [keyword, parts, limit ?? 100]
   );
 
   return rows;
@@ -150,6 +177,9 @@ const search = async (keyword, limit) => {
 // Same matching as search, but Ezviz leads. That priority used to be a JS sort
 // applied after every row had already been fetched.
 const suggest = async (keyword, limit) => {
+  const parts = terms(keyword);
+  if (parts.length === 0) return [];
+
   const { rows } = await query(
     `select ${PRODUCT_FIELDS}
        from products p
@@ -158,7 +188,7 @@ const suggest = async (keyword, limit) => {
                ${RELEVANCE} desc,
                p.effective_price asc
       limit $3`,
-    [keyword, `%${keyword}%`, limit ?? 10]
+    [keyword, parts, limit ?? 10]
   );
 
   return rows;

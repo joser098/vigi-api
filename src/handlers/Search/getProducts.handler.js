@@ -21,7 +21,8 @@ const getProducts = async (req, res) => {
         });
       }
 
-      products = await productRepository.findByCategory(category, order);
+      // validation.data is the canonical form: lowercase and unaccented.
+      products = await productRepository.findByCategory(validation.data, order);
     }
 
     if (promotion || category == "promociones") {
