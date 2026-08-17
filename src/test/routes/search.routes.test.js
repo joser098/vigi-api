@@ -1,7 +1,12 @@
-require('dotenv').config({ path: '.env.test' });
+require("dotenv").config({ path: ".env.test" });
+// Anything .env.test does not define falls back to .env. Values in .env.test win.
+require("dotenv").config();
 const supertest = require("supertest");
 const app = require("../../app");
+const { closeConnection } = require("../../db/client");
 const request = supertest(app);
+
+afterAll(closeConnection);
 
 describe("GET ALL ORDERS", () => {
     it("should return status 200", async () => {

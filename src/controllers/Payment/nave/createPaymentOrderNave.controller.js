@@ -1,7 +1,6 @@
 const { formatItemsToNaveBody } = require("../../../services/scripts");
 const crypto = require("node:crypto");
-const _savePaymentOrder = require("../savePaymentOrder.controller");
-const getDate = require("../../../services/getDate");
+const paymentRepository = require("../../../repositories/payment.repository");
 
 const _createPaymentOrderNave = async (bearer_token, payer, items, amount_to_pay) => {
     const url = process.env.NAVE_CREATE_PAYMENT_ORDER_URL;
@@ -55,21 +54,23 @@ const _createPaymentOrderNave = async (bearer_token, payer, items, amount_to_pay
     const data = await response.json();
 
     if(data){
-        const obj = {
-            id: data.data.payment_request_id,
+        // The creation timestamp used to be baked into the status string; it is
+        // the created_at column now.
+        await paymentRepository.createNave({
+            payment_request_id: data.data.payment_request_id,
             order_id,
-            status: `CREATED AT ${getDate()}`,
+            customer_id: payer.id,
+            status: "CREATED",
             payer: {
-                id: payer._id,
+                id: payer.id,
                 name: payer.user_data.name,
                 email: payer.email,
                 phone: payer.user_data.phone,
                 address: payer.user_data.address
             },
-            items
-
-        }
-        await _savePaymentOrder(null,obj);
+            items,
+            raw: data
+        });
     }
 
     return data.data;

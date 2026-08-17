@@ -1,37 +1,27 @@
-const _createOrder = require("../../controllers/Order/createOrder.controller");
-const getDate = require("../../services/getDate");
-const _getCustomerById = require("../../controllers/Customer/getCustomerById.controller");
-const addOrderToCustomer = require("../../controllers/Order/addOrderToCustomer.controller");
+const orderRepository = require("../../repositories/order.repository");
 
+// Called from the payment webhooks, not from a route: it receives the gateway
+// payload rather than req/res.
+//
+// status and date are no longer set here. The columns default to
+// 'en_preparacion' and now(), and marking the customer happens inside the same
+// transaction as the order.
 const createOrderHandler = async (payment_id, data, amount_paid) => {
   try {
+    const items = data.items.map((item) => ({
+      id: item.id,
+      name: item.title,
+      quantity: item.quantity,
+      unit_price: item.unit_price,
+    }));
 
-    const formatItems = data.items.map((item) => {
-      return {
-        name: item.title,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-      };
-    });
-    data.items = formatItems;
-
-    const order_model = {
+    return await orderRepository.create({
       payment_id,
       customer_id: data.payer.last_name.toString(),
-      items: data.items,
-      ip_address: data.ip_address,
       amount_paid: Number(amount_paid),
-      status: "En preparación",
-      date: getDate()
-    }
-
-    const newOrder = await _createOrder(order_model);
-
-    if (newOrder.acknowledged && newOrder.upsertedId) {      
-      addOrderToCustomer(order_model.customer_id);
-    }
-
-    return newOrder;
+      ip_address: data.ip_address,
+      items,
+    });
   } catch (error) {
     console.log(error);
     return error;

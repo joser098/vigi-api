@@ -1,5 +1,4 @@
-const _addProduct = require("../../controllers/Cart/addProduct.controller");
-const _getCartById = require("../../controllers/Cart/getCartById.controller");
+const cartRepository = require("../../repositories/cart.repository");
 const validateCartAdd = require("../../services/zod_schemas/cart_addProduct.schema");
 
 const addProduct = async (req, res) => {
@@ -13,7 +12,7 @@ const addProduct = async (req, res) => {
     }
 
     // Check if Cart exists
-    const cartExists = await _getCartById(validateBody.data.cart_id);
+    const cartExists = await cartRepository.findById(validateBody.data.cart_id);
 
     if (!cartExists) {
       return res
@@ -23,7 +22,7 @@ const addProduct = async (req, res) => {
 
     // Add product to cart
     let product = null;
-    product = await _addProduct(validateBody.data);
+    product = await cartRepository.setItems(validateBody.data);
 
     return res.status(200).json({
       success: true,

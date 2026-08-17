@@ -1,8 +1,8 @@
-const _getProvinces = require("../../controllers/Search/getProvinces.controller");
+const referenceRepository = require("../../repositories/reference.repository");
 
 const getProvinces = async (req, res) => {
   try {
-    const provinces = await _getProvinces();
+    const provinces = await referenceRepository.findProvinces();
 
     res.status(200).json({ success: true, data: provinces });
   } catch (error) {

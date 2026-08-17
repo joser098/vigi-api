@@ -1,10 +1,12 @@
-const _validateHash = require("../../controllers/Search/validateHash.controller");
+const verificationRepository = require("../../repositories/verification.repository");
 
 const validateHash = async (req, res) => {
   try {
     const { hash } = req.params;
 
-    const isHashValid = await _validateHash(hash);
+    // Checks without consuming: the reset form needs to know the link is good
+    // before the customer submits a new password.
+    const isHashValid = await verificationRepository.exists(hash);
 
     if (isHashValid) {
       return res.status(200).json({ success: true });

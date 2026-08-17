@@ -1,5 +1,4 @@
-const _emptyCart = require("../../controllers/Cart/emptyCart.controller");
-const _getCartById = require("../../controllers/Cart/getCartById.controller");
+const cartRepository = require("../../repositories/cart.repository");
 const validateId = require("../../services/zod_schemas/validateId.schema");
 
 const emptyCart = async (req, res) => {
@@ -15,14 +14,14 @@ const emptyCart = async (req, res) => {
     }
 
     //check if cart exists
-    const cart = await _getCartById(cart_id);
+    const cart = await cartRepository.findById(cart_id);
     if (!cart) {
       return res
         .status(404)
         .json({ success: false, message: "Cart not found" });
     }
 
-    const cartEmpty = await _emptyCart(cart_id);
+    await cartRepository.empty(cart_id);
 
     return res.status(200).json({
       success: true,

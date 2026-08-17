@@ -1,6 +1,4 @@
-const _getProductsByCategory = require("../../controllers/Search/getProductsByCategory.controller");
-const _getProuctsInPromotion = require("../../controllers/Search/getProductsInPromotion.controller");
-const { setPromotionsToProduct } = require("../../services/scripts");
+const productRepository = require("../../repositories/product.repository");
 const {
   validateCategoryProduct,
 } = require("../../services/zod_schemas/enums.schema");
@@ -9,34 +7,26 @@ const getProducts = async (req, res) => {
   try {
     const { category, promotion, order } = req.query;
     if (!category && !promotion) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Missing query" });
+      return res.status(400).json({ success: false, message: "Missing query" });
     }
 
     let products = [];
 
     if (category && category !== "promociones") {
       const validation = validateCategoryProduct(category);
-      if (!validation.success){
-        return res
-        .status(400)
-        .json({
+      if (!validation.success) {
+        return res.status(400).json({
           success: false,
           message: validation.error.issues[0].message,
         });
       }
 
-      products = await _getProductsByCategory(category, order);
+      products = await productRepository.findByCategory(category, order);
     }
 
-    if (promotion ||  category == "promociones") {
-      products = await _getProuctsInPromotion(order);
+    if (promotion || category == "promociones") {
+      products = await productRepository.findInPromotion(order);
     }
-
-    products.map((product) => {
-      setPromotionsToProduct(product);
-    });
 
     return res
       .status(200)

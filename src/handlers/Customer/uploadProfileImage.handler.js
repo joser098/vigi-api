@@ -1,12 +1,12 @@
 const fs = require("fs");
 const uploadImage = require("../../services/uploadImage");
-const _getCustomerById = require("../../controllers/Customer/getCustomerById.controller");
-const _updateProfileImage = require("../../controllers/Customer/updateProfileImage.controller");
+const customerRepository = require("../../repositories/customer.repository");
+
 
 const uploadProfileImage = async (req, res) => {
   try {
     const { customer_id } = req.params;
-    const { username, profile_image } = await _getCustomerById(customer_id);
+    const { username, profile_image } = await customerRepository.findById(customer_id);
 
     //Save image in R2 Bucket
     const NEW_IMAGE_URL = await uploadImage(req.file, customer_id, username);
@@ -16,9 +16,12 @@ const uploadProfileImage = async (req, res) => {
 
     //Save image url in database
     if (profile_image === "") {
-      const saveUrl = await _updateProfileImage(customer_id, NEW_IMAGE_URL);
+      const saveUrl = await customerRepository.updateProfileImage(
+        customer_id,
+        NEW_IMAGE_URL
+      );
 
-      if (!saveUrl.acknowledged) {
+      if (!saveUrl.modified) {
         return res.status(400).json({ error: "Error updating image" });
       }
     }

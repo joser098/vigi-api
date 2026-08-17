@@ -1,21 +1,22 @@
-const _updateFavorite = require("../../controllers/Customer/updateFavorite.controller");
+const customerRepository = require("../../repositories/customer.repository");
 
 const updateFavorite = async (req, res) => {
   try {
     const { product_id, customer_id, action } = req.body;
 
-    const result = await _updateFavorite(product_id, customer_id, action);
-
-    if (result.acknowledged) {
+    if (action !== "add" && action !== "remove") {
       return res
-        .status(200)
-        .json({ success: true, message: "update favorite" });
+        .status(400)
+        .json({ success: false, message: "action must be add or remove" });
     }
 
-    return res.status(500).json({
-      success: false,
-      message: "update favorite failed",
-    });
+    if (action === "add") {
+      await customerRepository.addFavorite(product_id, customer_id);
+    } else {
+      await customerRepository.removeFavorite(product_id, customer_id);
+    }
+
+    return res.status(200).json({ success: true, message: "update favorite" });
   } catch (error) {
     return res.status(500).json({
       success: false,

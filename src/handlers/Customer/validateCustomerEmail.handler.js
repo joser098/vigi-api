@@ -1,18 +1,21 @@
-const _validateEmailWithHash = require("../../controllers/Customer/validateEmailWithHash.controller");
+const verificationRepository = require("../../repositories/verification.repository");
+const customerRepository = require("../../repositories/customer.repository");
 
 const validateCustomerEmail = async (req, res) => {
   try {
     const { hash } = req.params;
 
-    const validation = await _validateEmailWithHash(hash, true);
+    const record = await verificationRepository.consume(hash);
 
-    if(validation){
-      return res.status(200).redirect(`${process.env.CLIENT_URL}/email-success`);
+    if (record) {
+      await customerRepository.activate(record.customer_id);
+
+      return res.redirect(`${process.env.CLIENT_URL}/email-success`);
     }
 
     return res.redirect(`${process.env.CLIENT_URL}/email-error`);
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message})
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 

@@ -1,15 +1,10 @@
-const _getSimilarProducts = require("../../controllers/Search/getSimilarProducts.controller");
-const { setPromotionsToProduct } = require("../../services/scripts");
+const productRepository = require("../../repositories/product.repository");
 
 const getSimilarProducts = async (req, res) => {
   try {
     const { category, provider } = req.query;
 
-    const products = await _getSimilarProducts(category, provider);
-
-    products.map((product) => {
-      setPromotionsToProduct(product)
-    });
+    const products = await productRepository.findSimilar(category, provider);
 
     res.status(200).json({ success: true, data: products });
   } catch (error) {

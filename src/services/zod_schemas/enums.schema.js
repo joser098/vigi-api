@@ -1,7 +1,26 @@
 const z = require('zod');
 
-const orderStatusSchema = z.enum(["recibido", "en preparacion", "enviado", "entregado"]);
-const categoryProductSchema = z.enum(["interior", "exterior", "batería", "alarmas", "camaras","almacenamiento", "kits", "porteros" ,"análogas"]);
+// Must match the codes seeded into order_statuses.
+const orderStatusSchema = z.enum([
+   "recibido",
+   "en_preparacion",
+   "enviado",
+   "entregado",
+]);
+
+// Includes the browse facets, which the endpoint accepts as a category param
+// even though they resolve against their own columns.
+const categoryProductSchema = z.enum([
+   "camaras",
+   "alarmas",
+   "almacenamiento",
+   "kits",
+   "porteros",
+   "interior",
+   "exterior",
+   "batería",
+   "análogas",
+]);
 
 const validateOrderStatus = (status) => {
    return orderStatusSchema.safeParse(status);
@@ -12,6 +31,6 @@ const validateCategoryProduct = (category) => {
 };
 
 module.exports = {
-   validateOrderStatus, 
+   validateOrderStatus,
    validateCategoryProduct
 };

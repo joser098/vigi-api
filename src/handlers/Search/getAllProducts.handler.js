@@ -1,13 +1,8 @@
-const _getAllProducts = require("../../controllers/Search/getAllproducts.controller");
-const { setPromotionsToProduct } = require("../../services/scripts");
+const productRepository = require("../../repositories/product.repository");
 
 const getAllProducts = async (req, res) => {
   try {
-    const products = await _getAllProducts();
-    
-    products.map((product) => {
-      setPromotionsToProduct(product);
-    });
+    const products = await productRepository.findAll();
 
     return res.status(200).json({ success: true, data: products });
   } catch (error) {

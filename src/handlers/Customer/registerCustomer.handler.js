@@ -1,9 +1,9 @@
-const _assignCartToCustomer = require("../../controllers/Customer/assingCartToCustomer.controller");
-const _createNewCart = require("../../controllers/Cart/createNewCart.controller");
-const _registerCustomer = require("../../controllers/Customer/registerCustomer.controller");
-const _validateCustomerExists = require("../../controllers/Customer/validateCustomerExists.controller");
-const { validateCustomer } = require("../../services/zod_schemas/customer_validation.schema");
-const _createEmailVerificationHash = require("../../controllers/Customer/createEmailVerificationHash.controller");
+const customerRepository = require("../../repositories/customer.repository");
+const verificationRepository = require("../../repositories/verification.repository");
+const cartRepository = require("../../repositories/cart.repository");
+const {
+  validateCustomer,
+} = require("../../services/zod_schemas/customer_validation.schema");
 const { emailVerificationHtml } = require("../../utils/templates/emails");
 const sendEmail = require("../../controllers/Notifications/sendEmail");
 const senders = require("../../utils/senders");
@@ -20,45 +20,50 @@ const registerCustomer = async (req, res) => {
     }
 
     //Validate if the customer already exists
-    const user = await _validateCustomerExists(validation.data);
+    const existing = await customerRepository.findByEmail(validation.data.email);
 
-    if (user.userFound) {
-      return res.status(409).json({ success: false, message: user.message });
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        message: `Ya existe un usuario con este correo ${validation.data.email}`,
+      });
     }
 
     //Register the customer
-    const customer = await _registerCustomer(validation.data);
+    const customer = await customerRepository.create(validation.data);
 
-    //Create a new cart for the customer
+    //Create a new cart for the customer. The cart references the customer, so
+    //there is no separate assignment step any more.
     let cart;
-    if (customer.acknowledged) {
-      cart = await _createNewCart(customer.insertedId);
-    }
-
-    // Assign the cart to the customer
-    let asssingmentResult;
-    if (cart.acknowledged) {
-      asssingmentResult = await _assignCartToCustomer(
-        customer.insertedId,
-        cart.insertedId
-      );
+    if (customer.inserted) {
+      cart = await cartRepository.create(customer.id);
     }
 
     const res_model = {
       success: true,
       customer,
       cart,
-      asssingmentResult,
     };
 
     //create hash with userId
-    const verification_hash = await _createEmailVerificationHash(customer.insertedId, "register");
+    const verification_hash = await verificationRepository.create(
+      customer.id,
+      "register"
+    );
 
     //Send email verification
-    const template = emailVerificationHtml(validation.data.name, `${process.env.MP_BACK_URL}/api/customer/verification/${verification_hash}`);
-    await sendEmail(validation.data.email, senders.verification ,"VIGI | Verifica tu correo", template);
+    const template = emailVerificationHtml(
+      validation.data.name,
+      `${process.env.MP_BACK_URL}/api/customer/verification/${verification_hash}`
+    );
+    await sendEmail(
+      validation.data.email,
+      senders.verification,
+      "VIGI | Verifica tu correo",
+      template
+    );
 
-    if (asssingmentResult.acknowledged) {
+    if (cart?.inserted) {
       return res.status(201).json(res_model);
     }
 

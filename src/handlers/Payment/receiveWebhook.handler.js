@@ -1,10 +1,10 @@
 const { MercadoPagoConfig, Payment } = require("mercadopago");
-const _savePaymentOrder = require("../../controllers/Payment/savePaymentOrder.controller");
+const paymentRepository = require("../../repositories/payment.repository");
+const orderRepository = require("../../repositories/order.repository");
+const customerRepository = require("../../repositories/customer.repository");
+const cartRepository = require("../../repositories/cart.repository");
 const createOrderHandler = require("../Order/createOrder.handler");
 const { successPayHtml } = require("../../utils/templates/emails");
-const _getCustomerById = require("../../controllers/Customer/getCustomerById.controller");
-const _getOrderByPaymentId = require("../../controllers/Order/getOrderByPaymentId.controller");
-const _emptyCart = require("../../controllers/Cart/emptyCart.controller");
 const sendEmail = require("../../controllers/Notifications/sendEmail");
 const senders = require("../../utils/senders");
 
@@ -26,10 +26,12 @@ const receiveWeebhook = async (req, res) => {
     });
 
     //Save the payment order
-    await _savePaymentOrder(paymentDetails);
+    await paymentRepository.saveMercadoPago(paymentDetails);
 
     //Check if order already exists, not to repeat email notification.
-    const order_exists = await _getOrderByPaymentId(paymentDetails.id);
+    const order_exists = await orderRepository.findByPaymentId(
+      paymentDetails.id
+    );
 
     //Create order
     await createOrderHandler(
@@ -39,26 +41,39 @@ const receiveWeebhook = async (req, res) => {
     );
 
     //Find customer
-    const customer = await _getCustomerById(paymentDetails.additional_info.payer.last_name);
-
-    // Email HTML Template
-    const successPay = successPayHtml(
-      customer.user_data.name,
-      paymentDetails.additional_info.items,
-      paymentDetails.transaction_amount,
-      paymentDetails.date_approved,
-      paymentDetails.payment_type_id,
-      paymentDetails.id
+    const customer = await customerRepository.findById(
+      paymentDetails.additional_info.payer.last_name
     );
 
     //Send email notification to admin and customer about purchase
     if (!order_exists && paymentDetails.status === "approved") {
-      await sendEmail(paymentDetails.payer.email, senders.noreply, "Pago Exitoso | VIGI", successPay);
-      await sendEmail(process.env.ADMIN_EMAIL, senders.noreply, "Nueva venta!", successPay);
+      const successPay = successPayHtml(
+        customer.user_data.name,
+        paymentDetails.additional_info.items,
+        paymentDetails.transaction_amount,
+        paymentDetails.date_approved,
+        paymentDetails.payment_type_id,
+        paymentDetails.id
+      );
+
+      await sendEmail(
+        paymentDetails.payer.email,
+        senders.noreply,
+        "Pago Exitoso | VIGI",
+        successPay
+      );
+      await sendEmail(
+        process.env.ADMIN_EMAIL,
+        senders.noreply,
+        "Nueva venta!",
+        successPay
+      );
     }
 
     //Empty Cart
-    _emptyCart(customer.cart_id)
+    if (customer?.cart_id) {
+      await cartRepository.empty(customer.cart_id);
+    }
 
     return res.status(200).send();
   } catch (error) {

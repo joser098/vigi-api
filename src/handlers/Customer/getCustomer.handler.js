@@ -1,5 +1,4 @@
-const _getCustomerById = require("../../controllers/Customer/getCustomerById.controller");
-const _getCustomerByName = require("../../controllers/Customer/getCustomerByName.controller");
+const customerRepository = require("../../repositories/customer.repository");
 
 const getCustomer = async (req, res) => {
   try {
@@ -7,11 +6,11 @@ const getCustomer = async (req, res) => {
 
     let customer;
     if (customer_id) {
-      customer = await _getCustomerById(customer_id);
+      customer = await customerRepository.findById(customer_id);
     }
 
     if (name) {
-      customer = await _getCustomerByName(name);
+      customer = await customerRepository.findByName(name);
     }
 
     return res.status(200).json({ succsess: true, data: customer });

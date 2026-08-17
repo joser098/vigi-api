@@ -1,10 +1,10 @@
-const _getCartById = require("../../controllers/Cart/getCartById.controller");
+const cartRepository = require("../../repositories/cart.repository");
 
 const getCartById = async (req, res) => {
   try {
     const { cart_id } = req.body;
 
-    const cart = await _getCartById(cart_id);
+    const cart = await cartRepository.findById(cart_id);
     if (!cart) {
       return res.status(404).json({ success: false, message: "Cart not found" });
     }

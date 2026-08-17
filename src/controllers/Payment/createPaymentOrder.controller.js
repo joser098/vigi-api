@@ -37,7 +37,7 @@ const _createPaymentOrder = async (payer, items, shipments) => {
       },
       payer: {
         name: payer.user_data.name,
-        surname: payer._id,
+        surname: payer.id,
         email: payer.email,
         address: {
           zip_code: payer.user_data.address.zip_code,
