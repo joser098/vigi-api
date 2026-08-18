@@ -217,9 +217,36 @@ Deno.serve(async (req) => {
     const body = await res.json();
 
     if (!res.ok) {
+      // Un 403 acá puede ser el token o el endpoint, y son problemas muy
+      // distintos. Preguntamos por /users/me con el mismo token para saber
+      // cuál de los dos es antes de mandar a nadie a revisar lo que no es.
+      let tokenOk: boolean | null = null;
+      if (res.status === 403) {
+        const check = await fetch(`${MELI_API}/users/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }).catch(() => null);
+        tokenOk = check ? check.ok : null;
+      }
+
+      const detalle = body?.message ?? body?.error ?? "";
+      const causa = Array.isArray(body?.cause) && body.cause.length
+        ? ` (${JSON.stringify(body.cause)})`
+        : "";
+
+      const diagnostico =
+        tokenOk === true
+          ? " El token es válido: /users/me responde bien, así que el 403 es del endpoint de búsqueda y no de las credenciales."
+          : tokenOk === false
+            ? " El token tampoco sirve para /users/me: hay que rehacer la autorización."
+            : "";
+
       return json(
         {
-          error: `MercadoLibre respondió ${res.status}: ${body?.message ?? ""}`,
+          error: `MercadoLibre respondió ${res.status}: ${detalle}${causa}.${diagnostico}`,
+          meli_status: res.status,
+          meli_body: body,
+          token_ok: tokenOk,
+          query,
         },
         502
       );
