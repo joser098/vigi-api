@@ -6,7 +6,8 @@ const whitelist = [
   "http://192.168.1.2:4321",
   "http://192.168.1.24:4321",
   "https://vigi-git-dev-joser098s-projects.vercel.app",
-  "https://vigi-pz4oof859-joser098s-projects.vercel.app"
+  "https://vigi-pz4oof859-joser098s-projects.vercel.app",
+  "https://vigi.vercel.app"
 ];
 
 module.exports = whitelist;
