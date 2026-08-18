@@ -30,7 +30,9 @@ const TOKEN_SKEW_MS = 60_000;
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type",
+  // invoke() de supabase-js agrega apikey y x-client-info: si no están acá, el
+  // preflight falla y el navegador lo reporta como error de CORS.
+  "Access-Control-Allow-Headers": "authorization, content-type, apikey, x-client-info",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
