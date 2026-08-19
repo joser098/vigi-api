@@ -4,13 +4,26 @@ const { created, updated } = require("../db/result");
 // Items keep the field names the cart has always returned, but title, image and
 // price are read from products on every request instead of being frozen when
 // the product was added.
+//
+// `unit_price` es `effective_price`, o sea el precio CON el descuento, igual
+// que en product.repository. Acá decía `p.price` —el precio de lista— así que
+// una promoción no se veía en el carrito y, peor, tampoco se aplicaba al
+// cobrar: `amount_to_pay` salía de la misma columna y de ahí lo tomaba el
+// checkout. Un producto con 13% de descuento se cobraba entero.
+//
+// `price_original` viaja al lado para poder mostrar el precio tachado. Es null
+// cuando no hay promoción, con el mismo criterio que usa el catálogo.
 const findById = async (cart_id) => {
   const { rows } = await query(
     `select
        c.id,
        c.customer_id,
        c.products_total,
-       c.amount_to_pay,
+       -- El total se recalcula al leer en vez de confiar en la columna. La
+       -- columna la escribe setItems, así que después de un cambio de precio
+       -- queda vieja hasta que alguien toque el carrito: eso hacía que el
+       -- subtotal en pantalla no coincidiera con lo que se cobraba.
+       coalesce(sum(ci.quantity * p.effective_price), 0) as amount_to_pay,
        c.coupon_id,
        c.coupon_discount,
        c.local_pickup,
@@ -25,7 +38,10 @@ const findById = async (cart_id) => {
              'title',       p.title,
              'picture_url', p.thumbnail,
              'quantity',    ci.quantity,
-             'unit_price',  p.price
+             'unit_price',  p.effective_price,
+             'price_original', case
+               when p.has_promotion and p.discount between 1 and 50
+               then p.price end
            )
            order by ci.added_at
          ) filter (where ci.id is not null),
@@ -76,7 +92,7 @@ const setItems = async ({ cart_id, items }) =>
               amount_to_pay  = t.amount
          from (
            select coalesce(sum(ci.quantity), 0)           as units,
-                  coalesce(sum(ci.quantity * p.price), 0) as amount
+                  coalesce(sum(ci.quantity * p.effective_price), 0) as amount
              from cart_items ci
              join products p on p.id = ci.product_id
             where ci.cart_id = $1
