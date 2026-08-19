@@ -216,6 +216,51 @@ const suggest = async (keyword, limit) => {
  * Devuelve también cuántos coinciden en total, que es lo que le permite al
  * asistente decir "23 opciones" en vez de mostrar una lista sin contexto.
  */
+// Marcas que el asistente ofrece por categoría.
+//
+// No es un filtro técnico sino comercial: Ezviz e Imou son las líneas de
+// consumo final, que es a quien le habla el asistente. Hikvision y Dahua son
+// gama instalador —127 y 90 cámaras— y recomendárselas a alguien que dijo "no
+// hace falta que sepas de cámaras" es mandarlo a elegir mal.
+//
+// Es un mapa por categoría y no una lista global a propósito: los porteros son
+// mayormente Commax (30 de 46) y las cerraduras son todas Ezviz, así que
+// aplicar la misma regla ahí dejaría esas ramas casi sin catálogo. Las
+// categorías que no figuran acá no se filtran por marca.
+//
+// Ojo con achicar de más: alarmas queda en 12 productos porque Imou no tiene
+// ninguna. Antes de sumar una categoría, mirar cuántos productos quedan
+// realmente — un asistente que contesta "0 opciones" es peor que uno que
+// recomienda una marca de segunda.
+const MARCAS_DESTACADAS = {
+  camaras: ["Ezviz", "Imou"],
+  alarmas: ["Ezviz", "Imou"],
+};
+
+/**
+ * Accesorios que el proveedor carga dentro de "camaras": paneles solares,
+ * baterías externas y soportes de pared. Recomendarle un soporte de $13.000 a
+ * alguien que pidió una cámara es una mala recomendación, así que el asistente
+ * no los ofrece.
+ *
+ * El patrón está anclado al ARRANQUE de la descripción, que es donde el
+ * proveedor declara qué es el producto. Sin anclar se llevaba puestas las
+ * cámaras solares reales —EB5 4K, HB90, la línea HB8— que mencionan "Panel
+ * Solar" o "Batería" entre sus prestaciones.
+ *
+ * Descartado a propósito: filtrar por `details->>'resolution' is null`. Parecía
+ * más limpio, pero 11 cámaras reales de lente dual (H9C DUAL, CRUISER, EB5 4K,
+ * HB90) no cargan ese campo porque su resolución está en la descripción. Habría
+ * escondido justo los modelos premium.
+ *
+ * Esto es un parche sobre datos, no la solución: lo correcto es que estos
+ * productos no estén en la categoría "camaras". Se arregla en el importador
+ * (db/import/catalogue-map.js) y el día que pase, esta constante sobra.
+ */
+const ACCESORIO = "^(panel solar|soporte de montaje|(bater[ií]a )?[0-9]+ ?w[ (])";
+
+const DESCRIPCION_NORMALIZADA = `regexp_replace(coalesce(p.description,''),'\s+',' ','g')`;
+
 const recommend = async ({
   category = null,
   location = null,
@@ -230,7 +275,19 @@ const recommend = async ({
     return `$${params.length}`;
   };
 
-  if (category) where.push(`p.category = ${$(category)}`);
+  if (category) {
+    where.push(`p.category = ${$(category)}`);
+
+    // Filtro duro: si la categoría tiene marcas elegidas, el resto no se
+    // ofrece. La búsqueda y el catálogo siguen mostrando todo; esto acota solo
+    // lo que el asistente recomienda.
+    const marcas = MARCAS_DESTACADAS[category];
+    if (marcas) where.push(`p.provider = any(${$(marcas)})`);
+
+    if (category === "camaras") {
+      where.push(`not (${DESCRIPCION_NORMALIZADA} ~* ${$(ACCESORIO)})`);
+    }
+  }
   if (budgetMax) where.push(`p.effective_price <= ${$(budgetMax)}`);
 
   // La batería es excluyente en los dos sentidos: quien no tiene enchufe no
