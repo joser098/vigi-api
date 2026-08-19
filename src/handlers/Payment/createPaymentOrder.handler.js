@@ -3,9 +3,8 @@ const _createPaymentOrderMePa = require("../../controllers/Payment/createPayment
 const _createPaymentOrderNave = require("../../controllers/Payment/nave/createPaymentOrderNave.controller");
 const _getBearerToken = require("../../controllers/Payment/nave/getBearerToken.controller");
 const cartRepository = require("../../repositories/cart.repository");
-const { calculateShippingCost } = require("../../services/shipping");
-
-const round = (amount) => Math.round(amount * 100) / 100;
+const couponRepository = require("../../repositories/coupon.repository");
+const { buildTotals } = require("../../services/checkout");
 
 const createPaymentOrder = async (req, res) => {
   try {
@@ -23,14 +22,20 @@ const createPaymentOrder = async (req, res) => {
         .json({ success: false, message: "El carrito está vacío" });
     }
 
-    const items = cart.items;
+    // Ítems con el descuento del cupón ya repartido, más envío: los mismos
+    // números que devolvió el cotizador, salidos de la misma función. El cupón
+    // se vuelve a validar acá, así que uno que venció mientras el carrito
+    // estaba abierto no se cobra con descuento.
+    const totals = await buildTotals({
+      cart,
+      customer_id,
+      address: payer.user_data.address,
+    });
 
-    const itemsTotal = items.reduce(
-      (total, item) => total + item.unit_price * item.quantity,
-      0
-    );
-    const shippingCost = await calculateShippingCost(payer.user_data.address);
-    const amount_to_pay = round(itemsTotal + shippingCost);
+    // Queda anotado en el carrito cuánto descuento se aplicó: el webhook llega
+    // después y solo trae ítems ya descontados, así que sin esto la orden no
+    // podría registrar el cupón ni contar el canje.
+    await couponRepository.setCartDiscount(cart_id, totals.discount);
 
     let paymentOrder;
     if (method == "nv") {
@@ -40,13 +45,13 @@ const createPaymentOrder = async (req, res) => {
       paymentOrder = await _createPaymentOrderNave(
         bearer_token,
         payer,
-        items,
-        amount_to_pay
+        totals.items,
+        totals.amount_to_pay
       );
       paymentOrder.init_point = paymentOrder.checkout_url;
     } else {
-      paymentOrder = await _createPaymentOrderMePa(payer, items, {
-        cost: shippingCost,
+      paymentOrder = await _createPaymentOrderMePa(payer, totals.items, {
+        cost: totals.shipping.cost,
         mode: "not_specified",
       });
     }

@@ -10,6 +10,8 @@ const ORDER_FIELDS = `
   o.payment_id,
   o.customer_id,
   o.amount_paid,
+  o.discount,
+  o.coupon_code,
   o.status,
   o.ip_address,
   o.created_at as date,
@@ -90,14 +92,35 @@ const findByPaymentId = async (payment_id) => {
 // overwritten: the sale is already recorded.
 //
 // status and date are not passed: the column defaults own them.
-const create = async ({ payment_id, customer_id, amount_paid, ip_address, items }) =>
+// coupon_id, coupon_code y discount son un snapshot: quedan congelados aunque
+// después se edite o se borre el cupón, igual que los precios de order_items.
+const create = async ({
+  payment_id,
+  customer_id,
+  amount_paid,
+  ip_address,
+  items,
+  coupon_id = null,
+  coupon_code = null,
+  discount = 0,
+}) =>
   withTransaction(async (client) => {
     const order = await client.query(
-      `insert into orders (payment_id, customer_id, amount_paid, ip_address)
-       values ($1, $2, $3, $4)
+      `insert into orders
+         (payment_id, customer_id, amount_paid, ip_address,
+          coupon_id, coupon_code, discount)
+       values ($1, $2, $3, $4, $5, $6, $7)
        on conflict (payment_id) do nothing
        returning id`,
-      [String(payment_id), customer_id, amount_paid, ip_address || null]
+      [
+        String(payment_id),
+        customer_id,
+        amount_paid,
+        ip_address || null,
+        coupon_id,
+        coupon_code,
+        discount,
+      ]
     );
 
     if (order.rowCount === 0) return created(order);
