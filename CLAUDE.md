@@ -43,6 +43,7 @@ ninguna parte del código.
 | `payment.repository.js` | órdenes de pago de MP y Nave |
 | `reference.repository.js` | provincias, carrusel |
 | `coupon.repository.js` | cupones, canjes, cupón del carrito |
+| `marketing.repository.js` | baja de la lista de novedades |
 
 Lo que queda en `src/controllers/` **no toca la base**: son adaptadores de APIs
 externas (Andreani, Resend, Mercado Pago, Nave).
@@ -129,6 +130,7 @@ estáticos de `uploads/` en `/public`).
 | `/api/payment` | mixta | crear orden (MP o Nave), 2 webhooks, feedback |
 | `/api/logistic` | JWT | costo de envío por código postal (Andreani) |
 | `/api/order` | JWT | órdenes del cliente |
+| `/api/marketing` | pública | baja de la lista de novedades |
 
 ### Cupones y envío
 
