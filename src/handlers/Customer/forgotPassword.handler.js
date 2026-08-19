@@ -3,6 +3,7 @@ const verificationRepository = require("../../repositories/verification.reposito
 const { resetPasswordHtml } = require("../../utils/templates/emails");
 const sendEmail = require("../../controllers/Notifications/sendEmail");
 const senders = require("../../utils/senders");
+const { joinUrl } = require("../../utils/urls");
 
 const forgorPassword = async (req, res) => {
   try {
@@ -26,7 +27,7 @@ const forgorPassword = async (req, res) => {
     //Send email to reset password
     const template = resetPasswordHtml(
       customer.user_data.name,
-      `${process.env.CLIENT_URL}/new-password/${hash}`
+      joinUrl(process.env.CLIENT_URL, `/new-password/${hash}`)
     );
     await sendEmail(
       email,

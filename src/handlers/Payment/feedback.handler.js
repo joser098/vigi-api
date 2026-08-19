@@ -1,4 +1,5 @@
 const { recordMercadoPagoPayment } = require("../../services/payments");
+const { joinUrl } = require("../../utils/urls");
 
 /**
  * Vuelta del comprador desde Mercado Pago (`back_urls`).
@@ -34,13 +35,16 @@ const feedback = async (req, res) => {
   }
 
   try {
-    if (estado === "approved") {
-      return res.status(200).redirect(`${process.env.CLIENT_URL}/payment/${id}`);
+    // Todos los estados van a la misma pantalla, que muestra lo que pasó.
+    // Antes un pago rechazado se redirigía a /profile sin una palabra: el
+    // cliente se quedaba sin saber si había comprado o no.
+    if (id && id !== "null") {
+      return res.status(200).redirect(joinUrl(process.env.CLIENT_URL, `/payment/${id}`));
     }
 
-    return res.status(200).redirect(`${process.env.CLIENT_URL}/profile`);
+    return res.status(200).redirect(joinUrl(process.env.CLIENT_URL, "/profile"));
   } catch (error) {
-    return res.status(400).redirect(`${process.env.CLIENT_URL}`);
+    return res.status(400).redirect(joinUrl(process.env.CLIENT_URL));
   }
 };
 

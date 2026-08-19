@@ -224,11 +224,21 @@ Reglas que salieron de ahí, y que conviene no aflojar:
   de `payer.last_name` —un campo de nombre— y MP no garantiza devolver
   `additional_info`.
 
-#### Config que hay que mirar cuando algo no llega
+#### URLs armadas desde variables de entorno: usar `utils/urls.js`
 
-`notification_url` se congela dentro de cada preferencia en el momento de
-crearla, así que un `MP_NOTIFICATION_URL` mal puesto no se nota hasta que
-alguien paga. Vale lo mismo para `MP_BACK_URL`.
+Siempre `joinUrl(process.env.LO_QUE_SEA, "/la/ruta")`, nunca template string.
+
+Una barra al final de `MP_BACK_URL` dejaba las URLs como `//api/payment/...`, y
+Express devuelve 404 con eso: `//api` son un segmento vacío y `api`, no la ruta
+`/api`. Rompió tres cosas a la vez —el webhook de MP, las `back_urls` y el link
+de verificación de email— y ninguna avisó.
+
+`app.js` tiene además un middleware que colapsa las barras repetidas antes del
+router. No es redundante: `notification_url` y `back_urls` quedan **congeladas
+dentro de cada preferencia** cuando se crea, así que las preferencias ya
+emitidas siguen golpeando con el doble slash mucho después de arreglar la
+variable. Cuando el middleware actúa lo loguea con `[url]`; si aparece seguido
+en producción, hay una variable de entorno con barra al final.
 
 Dos pasarelas. `createPaymentOrder.handler.js` bifurca según `method == "nv"`:
 Nave pide un bearer token OAuth y devuelve `checkout_url` (normalizado a

@@ -7,6 +7,7 @@ const {
 const { emailVerificationHtml } = require("../../utils/templates/emails");
 const sendEmail = require("../../controllers/Notifications/sendEmail");
 const senders = require("../../utils/senders");
+const { joinUrl } = require("../../utils/urls");
 
 const registerCustomer = async (req, res) => {
   try {
@@ -54,7 +55,7 @@ const registerCustomer = async (req, res) => {
     //Send email verification
     const template = emailVerificationHtml(
       validation.data.name,
-      `${process.env.MP_BACK_URL}/api/customer/verification/${verification_hash}`
+      joinUrl(process.env.MP_BACK_URL, `/api/customer/verification/${verification_hash}`)
     );
     await sendEmail(
       validation.data.email,

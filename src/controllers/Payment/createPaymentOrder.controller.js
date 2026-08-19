@@ -1,5 +1,6 @@
 const { MercadoPagoConfig, Preference } = require("mercadopago");
 const crypto = require("node:crypto");
+const { joinUrl } = require("../../utils/urls");
 
 const _createPaymentOrder = async (payer, items, shipments) => {
   // Agrega credenciales
@@ -13,11 +14,11 @@ const _createPaymentOrder = async (payer, items, shipments) => {
   const result = await preference.create({
     body: {
       items: items,
-      notification_url: `${process.env.MP_NOTIFICATION_URL}/api/payment/webhook`,
+      notification_url: joinUrl(process.env.MP_NOTIFICATION_URL, "/api/payment/webhook"),
       back_urls: {
-        success: `${process.env.MP_BACK_URL}/api/payment/feedback`,
-        failure: `${process.env.MP_BACK_URL}/api/payment/feedback`,
-        pending: `${process.env.MP_BACK_URL}/api/payment/feedback`,
+        success: joinUrl(process.env.MP_BACK_URL, "/api/payment/feedback"),
+        failure: joinUrl(process.env.MP_BACK_URL, "/api/payment/feedback"),
+        pending: joinUrl(process.env.MP_BACK_URL, "/api/payment/feedback"),
       },
       auto_return: "approved",
       payment_methods: {
