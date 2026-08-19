@@ -5,7 +5,13 @@ const { customerIdDe } = require("../utils/mpPayment");
 const PAYMENT_FIELDS = `
   id, gateway, gateway_payment_id, gateway_order_id, customer_id,
   status, status_detail, amount, payer, items, payment_method,
-  transaction_details, raw, date_approved, created_at
+  transaction_details, raw, date_approved, created_at,
+  -- La tarjeta no tiene columna propia: vive adentro de raw. Se expone acá
+  -- porque el frontend la venía pidiendo como payment.card (su tipo la
+  -- declaraba) y le llegaba undefined: la pantalla de "gracias por tu compra"
+  -- reventaba en el server y el cliente veía una página en blanco después de
+  -- haber pagado.
+  raw -> 'card' as card
 `;
 
 const findByGatewayPaymentId = async (gateway_payment_id) => {
