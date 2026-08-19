@@ -42,6 +42,7 @@ ninguna parte del código.
 | `order.repository.js` | órdenes e ítems de orden |
 | `payment.repository.js` | órdenes de pago de MP y Nave |
 | `reference.repository.js` | provincias, carrusel |
+| `coupon.repository.js` | cupones, canjes, cupón del carrito |
 
 Lo que queda en `src/controllers/` **no toca la base**: son adaptadores de APIs
 externas (Andreani, Resend, Mercado Pago, Nave).
@@ -124,10 +125,67 @@ estáticos de `uploads/` en `/public`).
 |---|---|---|
 | `/api/search` | pública | productos, órdenes, sugerencias, carrusel, provincias |
 | `/api/customer` | mixta | registro, login, perfil, favoritos, verificación de email, reset de password, foto de perfil |
-| `/api/cart` | JWT | agregar producto, vaciar, obtener |
+| `/api/cart` | JWT | agregar producto, vaciar, obtener, cupón, forma de entrega |
 | `/api/payment` | mixta | crear orden (MP o Nave), 2 webhooks, feedback |
 | `/api/logistic` | JWT | costo de envío por código postal (Andreani) |
 | `/api/order` | JWT | órdenes del cliente |
+
+### Cupones y envío
+
+Dos reglas, una sola idea: **nada que baje el precio llega en el request.**
+
+- El cupón elegido y el retiro en oficina se guardan en `carts`
+  (`coupon_id`, `local_pickup`). El body del pago no los trae.
+- `services/coupons.js` decide si un cupón aplica y cuánto descuenta. Es una
+  función pura, sin base.
+- `services/checkout.js` (`buildTotals`) arma subtotal, descuento, envío y
+  total. La usan **el cotizador y el checkout**, para que lo que se muestra y
+  lo que se cobra no puedan divergir. Vuelve a validar el cupón en cada
+  llamada: uno que venció con el carrito abierto se cae solo.
+- El descuento se reparte entre los ítems (`applyDiscountToItems`) porque
+  Mercado Pago arma el total sumando la preferencia y no acepta importes
+  negativos.
+- El canje se registra cuando **se crea la orden** (o sea, con el pago
+  aprobado), no cuando el cliente escribe el código. Como el webhook llega
+  después y solo trae ítems ya descontados, el checkout deja el monto anotado
+  en `carts.coupon_discount` y la orden lo consume.
+
+Envío: `services/shipping.js`. Es gratis por zona (CABA, que no cotiza) o por
+monto (`FREE_SHIPPING_MIN_PURCHASE`, hoy $450.000, medido sobre el subtotal
+**con el cupón ya descontado**). Los dos casos cortan antes de llamar a
+Andreani. El comentario de la constante tiene la aritmética que justifica el
+número.
+
+#### Pendiente: dimensiones por producto
+
+**Es la deuda técnica que más plata cuesta hoy.** La cotización de Andreani usa
+un bulto fijo de 3,5 kg / 20×25×35 cm para *todo*
+(`getShippingCostsByAddress.controller.js`), porque el catálogo no guarda peso
+ni medidas. Contra las tarifas de hoy:
+
+| Bulto | Córdoba | Salta |
+|---|---|---|
+| 3,5 kg (el que se cotiza siempre) | $26.725 | $38.063 |
+| kit real de 10 kg | $78.619 | $120.801 |
+| kit real de 18 kg | $105.855 | $168.544 |
+
+O sea que un kit se cotiza a un tercio o un quinto de lo que después factura
+Andreani, **y eso ya pasa en los envíos pagos**, no solo en los gratuitos. El
+envío gratis lo único que hace es sacar la cobertura parcial que daba lo que
+pagaba el cliente.
+
+Subir `FREE_SHIPPING_MIN_PURCHASE` no lo arregla: a $450.000 el bulto estándar
+deja 8,6% neto, pero un kit de 10 kg al norte sigue perdiendo. El arreglo real
+es:
+
+1. Guardar `weight_grams`, `height_cm`, `width_cm`, `length_cm` en `products`
+   (el importador los tiene que traer de la lista del proveedor, o se cargan a
+   mano por categoría como primera aproximación).
+2. Armar el bulto desde los ítems del carrito en vez de la constante
+   `BULTO_ESTANDAR`.
+3. Pasar `valorDeclarado` = total del carrito. Hoy está fijo en $30.000: una
+   cámara de $400.000 viaja asegurada por $30.000. Asegurar bien cuesta poco
+   ($26.725 → $29.387 para $250.000 declarados a Córdoba).
 
 ### Pagos
 
