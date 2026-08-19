@@ -194,6 +194,79 @@ const suggest = async (keyword, limit) => {
   return rows;
 };
 
+/**
+ * Recomendador del asistente del home ("Encontrá la tuya").
+ *
+ * Antes el asistente no consultaba nada: mapeaba una respuesta a una categoría
+ * y mandaba al cliente ahí. Con eso, tres preguntas terminaban en un listado de
+ * 300 cámaras sin filtrar, y las 379 alarmas, porteros, cerraduras y grabadores
+ * del catálogo eran inalcanzables desde el asistente.
+ *
+ * Acá se separan dos cosas que no son lo mismo:
+ *
+ *   FILTROS DUROS   descartan lo que directamente no sirve. Si el cliente dice
+ *                   que no tiene enchufe, una cámara cableada no es "peor
+ *                   opción": no funciona. Lo mismo con el presupuesto.
+ *
+ *   RANKING BLANDO  ordena lo que sí sirve. La ubicación entra acá y no como
+ *                   filtro porque 341 productos activos no la tienen cargada:
+ *                   filtrar por ella escondería media tienda. Los que coinciden
+ *                   suben, los que no tienen el dato quedan abajo pero visibles.
+ *
+ * Devuelve también cuántos coinciden en total, que es lo que le permite al
+ * asistente decir "23 opciones" en vez de mostrar una lista sin contexto.
+ */
+const recommend = async ({
+  category = null,
+  location = null,
+  battery = null,
+  budgetMax = null,
+  limit = 8,
+} = {}) => {
+  const where = ["p.is_active"];
+  const params = [];
+  const $ = (valor) => {
+    params.push(valor);
+    return `$${params.length}`;
+  };
+
+  if (category) where.push(`p.category = ${$(category)}`);
+  if (budgetMax) where.push(`p.effective_price <= ${$(budgetMax)}`);
+
+  // La batería es excluyente en los dos sentidos: quien no tiene enchufe no
+  // puede usar una cableada, y quien lo tiene no quiere estar cambiando pilas.
+  if (battery === true) where.push(`'bateria' = any(p.tags)`);
+  if (battery === false) where.push(`not ('bateria' = any(p.tags))`);
+
+  // Sin foto el producto se ve roto en una grilla de recomendaciones.
+  where.push(`p.thumbnail is not null`);
+
+  const filtro = where.join(" and ");
+
+  const score = `
+    (case when ${location ? `p.location::text = ${$(location)}` : "false"}
+          then 3 else 0 end)
+  + (case when p.location is null then 0 else 1 end)
+  + (case when p.has_promotion then 1 else 0 end)
+  `;
+
+  const { rows } = await query(
+    `select ${PRODUCT_FIELDS}, ${score} as score,
+            count(*) over () :: int as total
+       from products p
+      where ${filtro}
+      order by score desc, p.effective_price asc
+      limit ${$(limit)}`,
+    params
+  );
+
+  return {
+    total: rows[0]?.total ?? 0,
+    // score y total son del ranking, no del producto: no salen a la respuesta.
+    items: rows.map(({ score, total, ...producto }) => producto),
+  };
+};
+
 module.exports = {
   PRODUCT_FIELDS,
   findById,
@@ -204,4 +277,5 @@ module.exports = {
   findSimilar,
   search,
   suggest,
+  recommend,
 };

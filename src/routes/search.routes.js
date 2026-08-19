@@ -5,6 +5,7 @@ const getProduct = require("../handlers/Search/getProduct.handler");
 const getProducts = require("../handlers/Search/getProducts.handler");
 const getProvinces = require("../handlers/Search/getProvinces.handler");
 const getSimilarProducts = require("../handlers/Search/getSimilarProducts.handler");
+const recommend = require("../handlers/Search/recommend.handler");
 const getSuggest = require("../handlers/Search/getSuggest.handler");
 const validateHash = require("../handlers/Search/validateHash.handler");
 const searchEngine = require("../handlers/Search/searchEngine.handler");
@@ -21,6 +22,8 @@ searchRouter.get("/getAllProducts", getAllProducts);
 searchRouter.get("/getProduct", getProduct);
 searchRouter.get("/getProducts", getProducts);
 searchRouter.get("/getSimilarProducts", getSimilarProducts);
+// Asistente del home: filtra por facetas reales y devuelve el total.
+searchRouter.get("/recommend", recommend);
 searchRouter.get("/validate-hash/:hash", validateHash);
 searchRouter.post("/suggest", getSuggest);
 searchRouter.post("/", searchEngine);
