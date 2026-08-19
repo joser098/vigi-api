@@ -16,13 +16,21 @@ const ORDER_FIELDS = `
   o.ip_address,
   o.created_at as date,
   s.label as status_label,
+  s.sort_order as status_order,
+  s.is_terminal as status_is_final,
   coalesce(
     json_agg(
       json_build_object(
         'name',       oi.name,
         'quantity',   oi.quantity,
-        'unit_price', oi.unit_price
+        'unit_price', oi.unit_price,
+        -- Modelo y foto SÍ se leen del producto actual: son para linkear y
+        -- para mostrar una miniatura, no para calcular plata. El precio sigue
+        -- saliendo del snapshot de order_items y nunca de products.
+        'model',      p.model,
+        'thumbnail',  p.thumbnail
       )
+      order by oi.name
     ) filter (where oi.id is not null),
     '[]'
   ) as items
@@ -32,9 +40,10 @@ const ORDER_FROM = `
   from orders o
   join order_statuses s on s.code = o.status
   left join order_items oi on oi.order_id = o.id
+  left join products    p  on p.id = oi.product_id
 `;
 
-const GROUP_BY = `group by o.id, s.label, s.sort_order`;
+const GROUP_BY = `group by o.id, s.label, s.sort_order, s.is_terminal`;
 
 const findById = async (id) => {
   if (!isUuid(id)) throw new Error("El id de la orden no es válido");
