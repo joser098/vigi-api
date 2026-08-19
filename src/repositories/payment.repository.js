@@ -1,5 +1,6 @@
 const { query } = require("../db/client");
 const { isUuid } = require("../db/uuid");
+const { customerIdDe } = require("../utils/mpPayment");
 
 const PAYMENT_FIELDS = `
   id, gateway, gateway_payment_id, gateway_order_id, customer_id,
@@ -31,8 +32,9 @@ const findByGatewayOrderId = async (gateway_order_id) => {
 // fields worth querying. Repeated webhooks update in place instead of stacking
 // rows, which is what the Mongo upsert did.
 const saveMercadoPago = async (payment) => {
-  // The customer id rides inside payer.last_name in the MercadoPago payload.
-  const customer_id = payment.additional_info?.payer?.last_name;
+  // El customer_id sale de metadata, con fallback al viejo payer.last_name.
+  // Ver utils/mpPayment.
+  const customer_id = customerIdDe(payment);
 
   const { rows } = await query(
     `insert into payment_orders (
@@ -55,7 +57,7 @@ const saveMercadoPago = async (payment) => {
      returning id`,
     [
       String(payment.id),
-      isUuid(customer_id) ? customer_id : null,
+      customer_id,
       payment.status,
       payment.status_detail,
       payment.transaction_details?.total_paid_amount ??

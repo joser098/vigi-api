@@ -1,84 +1,44 @@
-const { MercadoPagoConfig, Payment } = require("mercadopago");
-const paymentRepository = require("../../repositories/payment.repository");
-const orderRepository = require("../../repositories/order.repository");
-const customerRepository = require("../../repositories/customer.repository");
-const cartRepository = require("../../repositories/cart.repository");
-const createOrderHandler = require("../Order/createOrder.handler");
-const { successPayHtml } = require("../../utils/templates/emails");
-const sendEmail = require("../../controllers/Notifications/sendEmail");
-const senders = require("../../utils/senders");
+const { recordMercadoPagoPayment } = require("../../services/payments");
+const { parseMercadoPagoNotification } = require("../../utils/mpPayment");
 
+/**
+ * Webhook de Mercado Pago.
+ *
+ * Todo el trabajo está en `services/payments`, compartido con la vuelta del
+ * cliente y con la conciliación. Acá solo queda entender la notificación y
+ * elegir el código de respuesta, que no es un detalle: MP reintenta con 5xx y
+ * da por entregada cualquier 2xx. Devolver 200 cuando algo salió mal es perder
+ * la venta y encima quedarse sin el reintento.
+ */
 const receiveWeebhook = async (req, res) => {
+  const { esPago, id } = parseMercadoPagoNotification(req);
+
+  // Notificaciones que no son de pago (merchant_order, etc.): no las
+  // procesamos, pero están bien entregadas.
+  if (!esPago) return res.status(200).send();
+
   try {
-    const client = new MercadoPagoConfig({
-      accessToken: process.env.MP_ACCESS_TOKEN,
-    });
+    const resultado = await recordMercadoPagoPayment(id);
 
-    const mp_payment = new Payment(client);
-    const payment = req.query;
-
-    if (payment.type !== "payment") {
-      return res.status(200).send();
-    }
-
-    const paymentDetails = await mp_payment.get({
-      id: payment["data.id"],
-    });
-
-    //Save the payment order
-    await paymentRepository.saveMercadoPago(paymentDetails);
-
-    //Check if order already exists, not to repeat email notification.
-    const order_exists = await orderRepository.findByPaymentId(
-      paymentDetails.id
+    console.log(
+      `[mp-webhook] pago ${id}: ${resultado.status}` +
+        (resultado.order_created
+          ? " · orden creada"
+          : ` · sin orden (${resultado.reason ?? "ya existía"})`)
     );
-
-    //Create order
-    await createOrderHandler(
-      paymentDetails.id,
-      paymentDetails.additional_info,
-      paymentDetails.transaction_details.total_paid_amount
-    );
-
-    //Find customer
-    const customer = await customerRepository.findById(
-      paymentDetails.additional_info.payer.last_name
-    );
-
-    //Send email notification to admin and customer about purchase
-    if (!order_exists && paymentDetails.status === "approved") {
-      const successPay = successPayHtml(
-        customer.user_data.name,
-        paymentDetails.additional_info.items,
-        paymentDetails.transaction_amount,
-        paymentDetails.date_approved,
-        paymentDetails.payment_type_id,
-        paymentDetails.id
-      );
-
-      await sendEmail(
-        paymentDetails.payer.email,
-        senders.noreply,
-        "Pago Exitoso | VIGI",
-        successPay
-      );
-      await sendEmail(
-        process.env.ADMIN_EMAIL,
-        senders.noreply,
-        "Nueva venta!",
-        successPay
-      );
-    }
-
-    //Empty Cart
-    if (customer?.cart_id) {
-      await cartRepository.empty(customer.cart_id);
-    }
 
     return res.status(200).send();
   } catch (error) {
-    console.error(error);
-    return res.status(400).json({ message: error.message });
+    // 500 a propósito: que MP reintente. Con 400 la notificación se da por
+    // entregada y no vuelve nunca más.
+    console.error(
+      `[mp-webhook] FALLÓ el pago ${id}:`,
+      error.message,
+      JSON.stringify({ query: req.query, body: req.body })
+    );
+
+    return res.status(500).json({ message: error.message });
   }
 };
+
 module.exports = receiveWeebhook;

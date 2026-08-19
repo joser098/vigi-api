@@ -35,6 +35,15 @@ const _createPaymentOrder = async (payer, items, shipments) => {
           },
         ],
       },
+      // El customer_id viajaba SOLO acá, escondido en el apellido del pagador,
+      // y de ahí lo sacaba el webhook. Es frágil: es un campo de nombre y MP no
+      // garantiza devolver `additional_info`. Ahora va también en `metadata`,
+      // que es el canal que MP tiene para esto, y el webhook lee de ahí
+      // primero. El surname se mantiene para no romper los pagos ya creados.
+      metadata: {
+        customer_id: payer.id,
+        cart_id: payer.cart_id ?? null,
+      },
       payer: {
         name: payer.user_data.name,
         surname: payer.id,

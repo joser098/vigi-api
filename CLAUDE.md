@@ -189,6 +189,47 @@ es:
 
 ### Pagos
 
+#### Registrar un pago de Mercado Pago: tres puertas, una sola función
+
+`services/payments.js` → `recordMercadoPagoPayment(paymentId)`. La llaman:
+
+| Camino | Cuándo |
+|---|---|
+| `POST /api/payment/webhook` | notificación de MP |
+| `GET /api/payment/feedback` | el navegador del cliente al volver del checkout |
+| `node db/reconcile-mercadopago.js --apply` | por cron, busca aprobados sin orden |
+
+**Los tres son independientes: alcanza con que uno funcione.** Es idempotente
+—el pago se upsertea por `gateway_payment_id`, la orden tiene `on conflict
+(payment_id) do nothing`— así que llamarla diez veces deja una orden y un mail.
+
+Esto no es paranoia de diseño. En agosto de 2026 un pago aprobado no quedó
+registrado: el webhook leía la notificación **solo de la query string**, y MP
+hoy manda Webhooks v2 con todo en el body. `req.query.type` venía `undefined`,
+el handler contestaba 200 y no hacía nada; MP lo daba por entregado y no
+reintentaba. La venta desapareció sin dejar una línea de log.
+
+Reglas que salieron de ahí, y que conviene no aflojar:
+
+- El parser (`utils/mpPayment.js`) acepta los tres formatos vivos de MP: v2 por
+  body, v2 por query e IPN. Tiene test propio.
+- **Nunca 200 cuando algo falló.** El webhook devuelve 500 para que MP
+  reintente. Un 200 mentiroso quema el único reintento que había.
+- `createOrder.handler.js` **propaga** los errores. Antes los atrapaba y
+  devolvía el Error, así que el que llamaba creía que había salido todo bien.
+- La orden se crea **solo con el pago aprobado**, y el carrito se vacía solo
+  ahí. Antes se hacían las dos cosas con cualquier estado: un rechazo entraba
+  como venta y además le borraba el carrito al cliente.
+- El `customer_id` viaja en `metadata` de la preferencia. Antes iba solo dentro
+  de `payer.last_name` —un campo de nombre— y MP no garantiza devolver
+  `additional_info`.
+
+#### Config que hay que mirar cuando algo no llega
+
+`notification_url` se congela dentro de cada preferencia en el momento de
+crearla, así que un `MP_NOTIFICATION_URL` mal puesto no se nota hasta que
+alguien paga. Vale lo mismo para `MP_BACK_URL`.
+
 Dos pasarelas. `createPaymentOrder.handler.js` bifurca según `method == "nv"`:
 Nave pide un bearer token OAuth y devuelve `checkout_url` (normalizado a
 `init_point`); si no, va a Mercado Pago. Cada una tiene su webhook, que guarda la
