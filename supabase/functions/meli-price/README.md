@@ -1,5 +1,18 @@
 # Precio de referencia de MercadoLibre
 
+> **Hoy esta function no se usa.** MercadoLibre cerró la API de búsqueda:
+> `/sites/MLA/search` responde **403** aun con un token válido, y el mismo
+> token funciona contra `/users/me`. No es un permiso que falte configurar,
+> es política de ellos.
+>
+> El panel resuelve esto llevando al listado público
+> (`listado.mercadolibre.com.ar/c3tn-ezviz`) y cargando el precio a mano.
+> Ver `MeliPrice.tsx` en vigi-admin.
+>
+> Esta function queda escrita y probada para el día que MercadoLibre habilite
+> el endpoint para la aplicación. Mientras tanto, no hace falta desplegarla ni
+> sembrar el `refresh_token`.
+
 Trae la publicación nueva más barata de un vendedor con reputación para un
 producto, y la guarda en `products`. Se dispara desde el detalle del producto
 en el admin, de a uno y a pedido.
