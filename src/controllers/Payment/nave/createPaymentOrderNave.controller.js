@@ -9,7 +9,7 @@ const _createPaymentOrderNave = async (bearer_token, payer, items, amount_to_pay
     const _body = {
         platform: "vigi",
         store_id: "store_1_vigi",
-        callback_url: "https://www.vigi.cam/profile#purchases",
+        callback_url: "https://vigi.com.ar/profile#purchases",
         order_id,
         mobile: false, //TODO: Get from props
         payment_request: {

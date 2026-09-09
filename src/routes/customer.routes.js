@@ -3,6 +3,7 @@ const fs = require("fs");
 const registerCustomer = require("../handlers/Customer/registerCustomer.handler");
 const getCustomer = require("../handlers/Customer/getCustomer.handler");
 const login = require("../handlers/Customer/login.handler");
+const guestCheckout = require("../handlers/Customer/guestCheckout.handler");
 const updateCustomer = require("../handlers/Customer/updateCustomer.handler");
 
 const userAuth = require("../middlewares/userAuth");
@@ -45,6 +46,8 @@ const upload = multer({ storage: storage, fileFilter: fileFilterfn });
 customerRouter.post("/", registerCustomer);
 customerRouter.get("/", userAuth, getCustomer);
 customerRouter.post("/login", login);
+// Compra sin cuenta: devuelve el mismo token que /login.
+customerRouter.post("/guest", guestCheckout);
 customerRouter.patch("/", userAuth, updateCustomer);
 customerRouter.put("/favorite",userAuth, updateFavorite);
 customerRouter.get("/favorite", userAuth, getFavorites);

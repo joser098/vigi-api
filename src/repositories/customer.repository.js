@@ -1,4 +1,5 @@
 const bcrypt = require("bcrypt");
+const { randomBytes } = require("crypto");
 const { query, withTransaction } = require("../db/client");
 const { created, updated } = require("../db/result");
 
@@ -90,6 +91,65 @@ const create = async (data) => {
         data.last_name,
         data.phone,
         data.DNI,
+        data.conditions_accepted,
+      ]
+    );
+
+    const { address } = data;
+
+    await client.query(
+      `insert into addresses
+         (customer_id, province, location, address_name, address_number, department, zip_code)
+       values ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        result.rows[0].id,
+        address.province,
+        address.location,
+        address.address_name,
+        address.address_number,
+        address.department,
+        address.zip_code,
+      ]
+    );
+
+    return created(result);
+  });
+};
+
+// Alta de un comprador que nunca pidió una cuenta: compró como invitado y solo
+// dejó los datos de envío. Es un cliente normal en la base —el carrito, el pago
+// y la orden lo necesitan— con tres diferencias:
+//
+//   - username y password los inventa el servidor. El invitado no los conoce.
+//   - is_active queda en true. No hay mail de verificación que confirmar porque
+//     no hay cuenta que activar; y así, si después quiere entrar a ver sus
+//     compras, "olvidé mi contraseña" le alcanza para reclamarla.
+//   - conditions_accepted viene del checkbox del checkout, no del registro.
+//
+// Para el resto del sistema un invitado es un cliente igual a cualquier otro,
+// que es justamente lo que evita tocar el esquema.
+const createGuest = async (data) => {
+  const username = `g_${randomBytes(6).toString("hex")}`;
+  const password = await bcrypt.hash(
+    randomBytes(24).toString("hex"),
+    SALT_ROUNDS
+  );
+
+  return withTransaction(async (client) => {
+    const result = await client.query(
+      `insert into customers
+         (username, email, password, name, last_name, phone, dni,
+          conditions_accepted, is_active)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, true)
+       returning id`,
+      [
+        username,
+        data.email,
+        password,
+        data.name,
+        data.last_name,
+        data.phone,
+        data.DNI ?? null,
         data.conditions_accepted,
       ]
     );
@@ -256,6 +316,7 @@ module.exports = {
   findByName,
   findCredentialsByEmail,
   create,
+  createGuest,
   updateProfile,
   updatePassword,
   updateProfileImage,
