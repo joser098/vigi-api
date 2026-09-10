@@ -8,6 +8,7 @@ const { successPayHtml } = require("../utils/templates/emails");
 const sendEmail = require("../controllers/Notifications/sendEmail");
 const senders = require("../utils/senders");
 const { customerIdDe } = require("../utils/mpPayment");
+const { enviarCompra } = require("./metaCapi");
 
 /**
  * Registrar un pago de Mercado Pago: una sola función, tres puertas.
@@ -114,6 +115,27 @@ const recordMercadoPagoPayment = async (paymentId) => {
       await sendEmail(process.env.ADMIN_EMAIL, senders.noreply, "Nueva venta!", html);
 
       if (customer.cart_id) await cartRepository.empty(customer.cart_id);
+    }
+
+    // La misma compra, contada también desde el servidor. Va acá adentro, en el
+    // bloque que corre una sola vez, para no gastar la llamada en cada webhook
+    // repetido; el `event_id` la desduplicaría igual contra el píxel del
+    // navegador, pero de las tres puertas que llaman a esta función conviene
+    // que salga por una sola.
+    //
+    // El try es a propósito: la venta ya está cobrada, la orden creada y el
+    // mail mandado. Que la medición falle no puede voltear nada de eso.
+    try {
+      await enviarCompra({
+        paymentId: payment.id,
+        valor: monto,
+        items: itemsDe(payment),
+        customer,
+        ip: payment.additional_info?.ip_address ?? null,
+        fechaAprobado: payment.date_approved ?? null,
+      });
+    } catch (error) {
+      console.error(`[meta-capi] pago ${payment.id}: error inesperado:`, error.message);
     }
   }
 
