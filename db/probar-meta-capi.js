@@ -13,16 +13,21 @@
  * Administrador de eventos en la pestaña "Probar eventos". Así el evento
  * aparece ahí y no ensucia las estadísticas.
  *
+ * Los datos salen de `payment_orders`, no de Mercado Pago. La primera versión
+ * los pedía a MP y fallaba con "Payment not Found" cuando el `.env` local tenía
+ * otras credenciales que las de producción. La fila ya tiene el estado, el
+ * monto, los ítems y el cliente: pedirlos afuera era ir a buscar lo que ya
+ * estaba adentro.
+ *
  * Repetirlo no infla nada: el `event_id` es `purchase_<id del pago>`, siempre
  * el mismo, así que Meta cuenta una sola compra por más veces que se mande.
  */
 
 require("dotenv").config();
 
-const { MercadoPagoConfig, Payment } = require("mercadopago");
+const paymentRepository = require("../src/repositories/payment.repository");
 const customerRepository = require("../src/repositories/customer.repository");
 const { enviarCompra } = require("../src/services/metaCapi");
-const { customerIdDe } = require("../src/utils/mpPayment");
 const { closeConnection } = require("../src/db/client");
 
 const args = process.argv.slice(2);
@@ -42,8 +47,8 @@ const main = async () => {
   if (!process.env.META_DATASET_ID || !process.env.META_CAPI_TOKEN) {
     salir(
       "Faltan META_DATASET_ID o META_CAPI_TOKEN.\n" +
-        "El token se genera en el Administrador de eventos, en Configuración,\n" +
-        "en la sección de la API de conversiones."
+        "El token se genera con un usuario del sistema que tenga asignado el\n" +
+        "conjunto de datos. Ver 00-EMPEZAR-ACA.md en vigi-marketing."
     );
   }
 
@@ -54,34 +59,37 @@ const main = async () => {
     );
   }
 
-  const payment = await new Payment(
-    new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN })
-  ).get({ id: String(paymentId) });
+  const payment = await paymentRepository.findByGatewayPaymentId(paymentId);
 
-  console.log(
-    `pago ${payment.id}: ${payment.status} · $${
-      payment.transaction_details?.total_paid_amount ?? payment.transaction_amount
-    }`
-  );
+  if (!payment) {
+    salir(
+      `No hay ningún pago con gateway_payment_id ${paymentId} en payment_orders.\n` +
+        "Fijate que sea el id de Mercado Pago y no el id interno de la fila."
+    );
+  }
+
+  const monto = payment.transaction_details?.total_paid_amount ?? payment.amount;
+
+  console.log(`pago ${paymentId}: ${payment.status} · $${monto}`);
 
   if (payment.status !== "approved") {
     salir(`El pago está en "${payment.status}". Meta solo debería ver los aprobados.`);
   }
 
-  const customer_id = customerIdDe(payment);
-  const customer = customer_id ? await customerRepository.findById(customer_id) : null;
+  const customer = payment.customer_id
+    ? await customerRepository.findById(payment.customer_id)
+    : null;
 
   if (!customer) {
     console.warn("Sin cliente en la base: el evento va con menos datos para emparejar.");
   }
 
   const resultado = await enviarCompra({
-    paymentId: payment.id,
-    valor:
-      payment.transaction_details?.total_paid_amount ?? payment.transaction_amount,
-    items: payment.additional_info?.items ?? payment.items ?? [],
+    paymentId,
+    valor: monto,
+    items: payment.raw?.additional_info?.items ?? payment.items ?? [],
     customer,
-    ip: payment.additional_info?.ip_address ?? null,
+    ip: payment.raw?.additional_info?.ip_address ?? null,
     fechaAprobado: payment.date_approved ?? null,
   });
 
