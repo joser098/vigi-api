@@ -1,33 +1,57 @@
 // Envío de una campaña de email marketing.
 //
-// Corre en servidor por el mismo motivo que product-images y meli-price: la
-// API key de Resend no puede estar en el bundle del panel. El panel arma la
-// campaña y aprieta el botón; acá se decide a quién se le manda y se manda.
+// Corre en servidor por el mismo motivo que product-images y meli-price: las
+// API keys no pueden estar en el bundle del panel. El panel arma la campaña y
+// aprieta el botón; acá se decide a quién se le manda y se manda.
+//
+// Dos proveedores, cada uno en lo suyo:
+//
+//   - Unitpost manda el marketing. Su plan gratuito son 200 por día y 5000 por
+//     mes, y no los comparte con nada.
+//   - Resend queda para lo transaccional de vigi-api (confirmaciones de
+//     compra). Lo que esos mails no usan de sus 100 diarios se aprovecha acá
+//     como desborde, dejando siempre una reserva para que una compra nunca se
+//     quede sin su mail.
+//
+// Sin UNITPOST_API_KEY todo sale por Resend, como antes.
 //
 // Desplegar:
 //   npx supabase functions deploy marketing-send --project-ref <REF>
-//   npx supabase secrets set RESEND_API_KEY=... MARKETING_FROM=... CLIENT_URL=...
+//   npx supabase secrets set UNITPOST_API_KEY=... RESEND_API_KEY=... MARKETING_FROM=... RESEND_MARKETING_FROM=... CLIENT_URL=...
 //
-// MARKETING_FROM es la dirección remitente, con dominio verificado en Resend.
-// Puede ir sola ("marketing@notification.vigi.com.ar") o con nombre
-// ("Vigi <marketing@notification.vigi.com.ar>"): el nombre para mostrar lo
-// arma `remitente()` más abajo. CLIENT_URL es el sitio público, para armar el
-// link de baja.
+// MARKETING_FROM es la dirección remitente, con el dominio verificado en
+// Unitpost. RESEND_MARKETING_FROM es la de los mails que desbordan a Resend,
+// con el dominio verificado ahí: el plan gratuito de Resend admite un solo
+// dominio y ya lo usa lo transaccional. Sin ella se usa MARKETING_FROM.
+//
+// Las dos pueden ir solas ("hola@novedades.vigi.com.ar") o con nombre
+// ("Vigi <hola@novedades.vigi.com.ar>"): el nombre para mostrar lo arma
+// `remitente()` más abajo. CLIENT_URL es el sitio público, para armar
+// el link de baja.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
-// Resend acepta hasta 100 mails por llamada al endpoint batch.
+// Los dos aceptan hasta 100 mails por llamada al endpoint batch.
 const LOTE = 100;
 
-// Cuota diaria del plan gratuito de Resend. La comparten el marketing y los
-// mails transaccionales de vigi-api, que salen con la misma API key: si una
-// campaña se come los 100, las confirmaciones de compra del día no salen.
-const LIMITE_DIARIO = 100;
+// Plan gratuito de Unitpost: 200 por día y 5000 por mes, con corte duro. Las
+// pruebas también descuentan y no dejan fila en marketing_sends: el colchón es
+// para ellas.
+const UNITPOST_DIARIO = 200;
+const UNITPOST_MENSUAL = 5000;
+const UNITPOST_COLCHON = 5;
 
-// Cuántos manda una tanda si el panel no pide otra cosa. Los 15 que quedan
-// son el colchón para lo transaccional y para las pruebas, que también
-// descuentan de la cuota y no quedan registradas en marketing_sends.
-const TANDA_POR_DEFECTO = 85;
+// Plan gratuito de Resend: 100 por día, compartidos con los transaccionales de
+// vigi-api, que salen con la misma API key. Las campañas usan como mucho lo
+// que queda después de la reserva: si una campaña se come los 100, las
+// confirmaciones de compra del día no salen.
+const RESEND_DIARIO = 100;
+const RESEND_RESERVA = 40;
+
+type Proveedor = "unitpost" | "resend";
+
+// Cuántos manda una tanda si el panel no pide otra cosa: todo lo que entre hoy.
+const TANDA_POR_DEFECTO = UNITPOST_DIARIO - UNITPOST_COLCHON + RESEND_DIARIO - RESEND_RESERVA;
 
 // Freno de mano. Una lista más grande que esto es casi siempre un error de
 // carga, y del otro lado hay gente real: mejor que falle a que salga.
@@ -154,10 +178,17 @@ Deno.serve(async (req) => {
   const testEmail = String(body.test_email ?? "").trim();
   if (!campaignId) return json({ error: "Falta campaign_id" }, 400);
 
-  const apiKey = env("RESEND_API_KEY");
+  const claves: Record<Proveedor, string> = {
+    unitpost: env("UNITPOST_API_KEY"),
+    resend: env("RESEND_API_KEY"),
+  };
   const from = env("MARKETING_FROM");
-  if (!apiKey || !from) {
-    return json({ error: "Faltan RESEND_API_KEY o MARKETING_FROM en la function" }, 500);
+  const fromResend = env("RESEND_MARKETING_FROM") || from;
+  if (!from || (!claves.unitpost && !claves.resend)) {
+    return json(
+      { error: "Faltan MARKETING_FROM y al menos una de UNITPOST_API_KEY o RESEND_API_KEY en la function" },
+      500
+    );
   }
 
   // service_role para escribir el resultado: marketing_sends y los contadores
@@ -174,59 +205,123 @@ Deno.serve(async (req) => {
   if (!campana) return json({ error: "No existe la campaña" }, 404);
   if (!campana.html?.trim()) return json({ error: "La campaña no tiene contenido" }, 400);
 
-  const de = remitente(from, campana.from_name);
-
-  const enviar = async (destinatarios: Array<{ email: string; html: string }>) => {
-    const r = await fetch("https://api.resend.com/emails/batch", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(
-        destinatarios.map((d) => ({
-          from: de,
-          to: [d.email],
-          subject: campana.subject,
-          html: d.html,
-        }))
-      ),
-    });
-
-    const payload = await r.json();
-    if (!r.ok) throw new Error(payload?.message ?? `Resend respondió ${r.status}`);
-
-    return (payload?.data ?? []) as Array<{ id: string }>;
+  const de: Record<Proveedor, string> = {
+    unitpost: remitente(from, campana.from_name),
+    resend: remitente(fromResend, campana.from_name),
   };
 
   /**
-   * Cuántos mails de campaña salieron hoy.
+   * Manda un lote por un proveedor y devuelve un id por mail.
    *
-   * Desde la medianoche UTC, que es cuando Resend reinicia la cuenta. No
-   * incluye ni las pruebas ni los mails transaccionales de la API, que
-   * también descuentan: por eso la tanda por defecto son 85 y no 100.
+   * Resend devuelve un id por mail. Unitpost devuelve uno solo para todo el
+   * lote: se repite en cada fila, alcanza para buscarlo en su panel.
    */
-  const enviadosHoy = async () => {
-    const medianoche = new Date();
-    medianoche.setUTCHours(0, 0, 0, 0);
+  const enviar = async (
+    proveedor: Proveedor,
+    destinatarios: Array<{ email: string; html: string }>
+  ): Promise<Array<string | null>> => {
+    const mails = destinatarios.map((d) => ({
+      from: de[proveedor],
+      to: proveedor === "resend" ? [d.email] : d.email,
+      subject: campana.subject,
+      html: d.html,
+    }));
 
+    const url =
+      proveedor === "unitpost"
+        ? "https://www.unitpost.com/api/v1/email/batch"
+        : "https://api.resend.com/emails/batch";
+
+    const r = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${claves[proveedor]}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(proveedor === "unitpost" ? { emails: mails } : mails),
+    });
+
+    const payload = await r.json().catch(() => null);
+    if (!r.ok) {
+      const detalle = payload?.error?.message ?? payload?.message ?? payload?.error;
+      throw new Error(
+        typeof detalle === "string" ? detalle : `${proveedor === "unitpost" ? "Unitpost" : "Resend"} respondió ${r.status}`
+      );
+    }
+
+    if (proveedor === "unitpost") {
+      const id = payload?.data?.id ?? null;
+      return destinatarios.map(() => id);
+    }
+
+    const ids = (payload?.data ?? []) as Array<{ id: string }>;
+    return destinatarios.map((_, n) => ids[n]?.id ?? null);
+  };
+
+  /**
+   * Cuántos mails de campaña salieron por un proveedor desde `desde`.
+   *
+   * No incluye ni las pruebas ni los transaccionales de la API: para eso están
+   * el colchón de Unitpost y la reserva de Resend.
+   */
+  const enviadosDesde = async (proveedor: Proveedor, desde: Date) => {
     const { count } = await admin_db
       .from("marketing_sends")
       .select("id", { count: "exact", head: true })
       .eq("status", "sent")
-      .gte("created_at", medianoche.toISOString());
+      .eq("provider", proveedor)
+      .gte("created_at", desde.toISOString());
 
     return count ?? 0;
+  };
+
+  /**
+   * Lo que le queda hoy a cada proveedor.
+   *
+   * Los días y los meses se cuentan en UTC, que es cuando los proveedores
+   * reinician la cuenta. Un proveedor sin API key tiene cero.
+   */
+  const cupo = async () => {
+    const medianoche = new Date();
+    medianoche.setUTCHours(0, 0, 0, 0);
+    const inicioMes = new Date(Date.UTC(medianoche.getUTCFullYear(), medianoche.getUTCMonth(), 1));
+
+    const [uniHoy, uniMes, resHoy] = await Promise.all([
+      enviadosDesde("unitpost", medianoche),
+      enviadosDesde("unitpost", inicioMes),
+      enviadosDesde("resend", medianoche),
+    ]);
+
+    const unitpost = claves.unitpost
+      ? Math.max(
+          0,
+          Math.min(UNITPOST_DIARIO - UNITPOST_COLCHON - uniHoy, UNITPOST_MENSUAL - UNITPOST_COLCHON - uniMes)
+        )
+      : 0;
+    const resend = claves.resend ? Math.max(0, RESEND_DIARIO - RESEND_RESERVA - resHoy) : 0;
+
+    return {
+      hoy: uniHoy + resHoy,
+      disponible: { unitpost, resend } as Record<Proveedor, number>,
+      detalle: {
+        unitpost: { hoy: uniHoy, mes: uniMes, limite_dia: UNITPOST_DIARIO, limite_mes: UNITPOST_MENSUAL },
+        resend: { hoy: resHoy, limite_dia: RESEND_DIARIO - RESEND_RESERVA },
+      },
+    };
   };
 
   // --- Prueba -------------------------------------------------------------
   // Una sola dirección, no toca la lista ni marca la campaña como enviada. Es
   // lo que hay que usar antes de mandarle a mil personas un HTML que se ve mal
   // en Gmail.
+  // Sale por el proveedor que manda las campañas, para ver el mail tal cual lo
+  // va a recibir la gente (con el pie de Unitpost incluido, en el plan gratis).
   if (testEmail) {
+    const proveedor: Proveedor = claves.unitpost ? "unitpost" : "resend";
+
     try {
       const url = `${env("CLIENT_URL")}/baja?token=prueba`;
-      await enviar([
+      await enviar(proveedor, [
         {
           email: testEmail,
           html: personalizar(conBaja(campana.html, url), {
@@ -238,7 +333,7 @@ Deno.serve(async (req) => {
         },
       ]);
 
-      return json({ ok: true, test: true, sent: 1, from: de });
+      return json({ ok: true, test: true, sent: 1, from: de[proveedor], provider: proveedor });
     } catch (e) {
       return json({ error: e instanceof Error ? e.message : String(e) }, 502);
     }
@@ -310,15 +405,16 @@ Deno.serve(async (req) => {
   }
 
   // --- Cuánto entra hoy ---------------------------------------------------
-  const hoy = await enviadosHoy();
-  const disponibleHoy = Math.max(0, LIMITE_DIARIO - hoy);
+  const { hoy, disponible, detalle } = await cupo();
+  const disponibleHoy = disponible.unitpost + disponible.resend;
 
   if (disponibleHoy === 0) {
     return json(
       {
-        error: `Hoy ya salieron ${hoy} mails y el límite diario de Resend es ${LIMITE_DIARIO}. Faltan ${pendientes.length} contactos: seguí mañana.`,
+        error: `Hoy ya salieron ${hoy} mails de campaña y no queda cupo en ningún proveedor. Faltan ${pendientes.length} contactos: seguí mañana.`,
         remaining: pendientes.length,
         sent_today: hoy,
+        quota: detalle,
       },
       429
     );
@@ -338,9 +434,21 @@ Deno.serve(async (req) => {
   let ok = 0;
   let fallados = 0;
 
-  for (let i = 0; i < destinatarios.length; i += LOTE) {
-    const lote = destinatarios.slice(i, i + LOTE);
+  // Primero Unitpost, que es el que está para esto; Resend solo con lo que
+  // Unitpost no alcanza a cubrir hoy.
+  const lotes: Array<{ proveedor: Proveedor; contactos: Contacto[] }> = [];
+  const porUnitpost = Math.min(disponible.unitpost, destinatarios.length);
+  const reparto: Array<[Proveedor, Contacto[]]> = [
+    ["unitpost", destinatarios.slice(0, porUnitpost)],
+    ["resend", destinatarios.slice(porUnitpost)],
+  ];
+  for (const [proveedor, grupo] of reparto) {
+    for (let i = 0; i < grupo.length; i += LOTE) {
+      lotes.push({ proveedor, contactos: grupo.slice(i, i + LOTE) });
+    }
+  }
 
+  for (const { proveedor, contactos: lote } of lotes) {
     const preparados = lote.map((c) => ({
       contacto: c,
       email: c.email,
@@ -351,7 +459,7 @@ Deno.serve(async (req) => {
     }));
 
     try {
-      const resultado = await enviar(preparados);
+      const ids = await enviar(proveedor, preparados);
 
       await admin_db.from("marketing_sends").insert(
         preparados.map((p, n) => ({
@@ -359,7 +467,8 @@ Deno.serve(async (req) => {
           contact_id: p.contacto.id,
           email: p.email,
           status: "sent",
-          provider_id: resultado[n]?.id ?? null,
+          provider: proveedor,
+          provider_id: ids[n],
         }))
       );
 
@@ -375,6 +484,7 @@ Deno.serve(async (req) => {
           contact_id: p.contacto.id,
           email: p.email,
           status: "failed",
+          provider: proveedor,
           error: mensaje.slice(0, 500),
         }))
       );
@@ -406,9 +516,9 @@ Deno.serve(async (req) => {
     remaining: restantes,
     done: termino,
     sent_today: hoy + ok,
-    daily_limit: LIMITE_DIARIO,
+    by_provider: { unitpost: porUnitpost, resend: destinatarios.length - porUnitpost },
     message: termino
       ? `Enviada a ${ok} contactos${fallados ? `, ${fallados} fallaron` : ""}. No queda nadie pendiente.`
-      : `Salieron ${ok}${fallados ? ` (${fallados} fallaron)` : ""}. Faltan ${restantes}: seguí mañana, cuando se reinicie la cuota de Resend.`,
+      : `Salieron ${ok}${fallados ? ` (${fallados} fallaron)` : ""}. Faltan ${restantes}: seguí mañana, cuando se reinicie la cuota.`,
   });
 });

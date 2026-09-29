@@ -1,9 +1,10 @@
 # marketing-send
 
-Envía una campaña de email marketing a los contactos suscriptos, vía Resend.
+Envía una campaña de email marketing a los contactos suscriptos, vía Unitpost
+(con Resend de desborde).
 
-La llama el panel (`vigi-admin`, sección **Email**). Corre en servidor porque la
-API key de Resend no puede estar en el bundle del navegador — el mismo motivo
+La llama el panel (`vigi-admin`, sección **Email**). Corre en servidor porque las
+API keys no pueden estar en el bundle del navegador — el mismo motivo
 que `product-images` y `meli-price`.
 
 ## Desplegar
@@ -12,18 +13,26 @@ que `product-images` y `meli-price`.
 npx supabase functions deploy marketing-send --project-ref gqpoxkuzmygrmhltubyp
 
 npx supabase secrets set \
+  UNITPOST_API_KEY=up_xxx \
   RESEND_API_KEY=re_xxx \
-  MARKETING_FROM="marketing@notification.vigi.com.ar" \
+  MARKETING_FROM="hola@novedades.vigi.com.ar" \
+  RESEND_MARKETING_FROM="novedades@notification.vigi.com.ar" \
   CLIENT_URL=https://vigi.com.ar
 ```
 
 `SUPABASE_URL`, `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY` ya las inyecta
 Supabase sola.
 
-**El dominio de `MARKETING_FROM` tiene que estar verificado en Resend.** Sin eso
-Resend rechaza el envío. Conviene que sea un dominio o subdominio distinto del
-transaccional (`EMAIL_DOMAIN` de la API): si una campaña de marketing se gana
-una mala reputación, no se lleva puestos los mails de confirmación de compra.
+**El dominio de `MARKETING_FROM` tiene que estar verificado en Unitpost.** Los
+mails que desbordan a Resend salen desde `RESEND_MARKETING_FROM` (por ejemplo
+`novedades@notification.vigi.com.ar`), que tiene que ser del dominio verificado
+en Resend: el plan gratuito admite uno solo. Sin ese secreto se usa
+`MARKETING_FROM`, y Resend rechaza el envío si ese dominio no es el suyo.
+
+Por eso el marketing de Unitpost sale de un subdominio propio
+(`novedades.vigi.com.ar`), distinto del transaccional (`notification.`): si una
+campaña se gana una mala reputación, no se lleva puestos los mails de
+confirmación de compra.
 
 ## El nombre del remitente
 
@@ -43,8 +52,8 @@ Importa: sin nombre, la bandeja de entrada muestra la parte de antes del arroba
 
 1. Todos los `marketing_contacts` con `is_subscribed = true`.
 2. Menos los que ya tienen una fila en `marketing_sends` para esa campaña.
-3. De esos, los primeros `limit` (85 si el panel no dice otra cosa), y nunca más
-   de los que quedan de la cuota del día.
+3. De esos, los primeros `limit` (todo lo que entre hoy si el panel no dice otra
+   cosa), y nunca más de los que quedan de la cuota del día.
 
 El segundo filtro es lo que hace que reintentar una campaña que falló a la mitad
 sea seguro, y lo que sostiene el envío por tandas: los que ya la recibieron no
@@ -55,17 +64,26 @@ con 1200 contactos, una consulta común devuelve 1000 y parece completa. Serían
 dos cosas silenciosas y feas —no mandarle nunca a la cola de la lista, y leer
 una lista incompleta de "ya enviados" y escribirle dos veces a la misma gente—.
 
-## Tandas y cuota diaria
+## Proveedores y cuotas
 
-El plan gratuito de Resend son **100 mails por día**, y los comparte con los
-transaccionales de `vigi-api`, que salen con la misma `RESEND_API_KEY`. Por eso:
+El marketing sale por **Unitpost** y usa **Resend** solo como desborde. Resend
+queda para lo transaccional de `vigi-api` (confirmaciones de compra), que sale
+con la misma `RESEND_API_KEY`.
 
-- La tanda por defecto son **85**. Los 15 que quedan son el colchón para las
-  confirmaciones de compra del día y para las pruebas, que también descuentan de
-  la cuota y no dejan fila en `marketing_sends`.
-- Antes de mandar, la function cuenta los `marketing_sends` con `status = 'sent'`
-  desde la medianoche **UTC**, que es cuando Resend reinicia la cuenta, y recorta
-  la tanda a lo que quede. Con la cuota agotada devuelve 409 con cuántos faltan.
+| | Plan gratuito | Lo que usan las campañas |
+|---|---|---|
+| Unitpost | 200/día, 5000/mes, corte duro | 195/día (5 de colchón para pruebas), hasta 4995/mes |
+| Resend | 100/día, 3000/mes | 60/día; los otros 40 quedan para los mails de compra |
+
+Son unos **255 mails de campaña por día**. En cada tanda salen primero por
+Unitpost y, cuando se le acaba el cupo del día (o del mes), el resto por Resend.
+
+- Cada fila de `marketing_sends` guarda `provider`. La function cuenta los
+  `sent` por proveedor desde la medianoche **UTC** (y desde el primer día del
+  mes, en Unitpost) y recorta la tanda a lo que quede. Sin cupo devuelve 429.
+- Las pruebas salen por Unitpost y no dejan fila: para eso es el colchón.
+- El plan gratuito de Unitpost agrega su marca en el pie de los mails.
+- Sin `UNITPOST_API_KEY` todo sale por Resend, con el tope de 60 por día.
 - Una campaña a medio mandar queda en **`sending`**, no en `sent`, y sin
   `sent_at`. Si se marcara como enviada, la tanda de mañana no tendría dónde
   volver. Pasa a `sent` recién cuando no queda nadie pendiente.
