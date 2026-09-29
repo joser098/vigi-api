@@ -13,6 +13,7 @@
 //   reprice    recalcula el precio de las publicadas y lo actualiza en ML
 //   sync       trae estado, precio y ventas de las publicadas
 //   attributes atributos que pide una categoría, para completarlos a mano
+//   catalog    busca el producto en el catálogo de ML (para sacar el GTIN)
 //
 // NO toca la tienda: no escribe en `products` ni cambia el precio de
 // vigi.com.ar. Todo lo de MercadoLibre vive en `meli_listings` y
@@ -196,8 +197,13 @@ const errorMeli = (r: MeliRespuesta) => {
         .map((c: any) => c?.message ?? c?.code)
         .filter(Boolean)
     : [];
+  // A veces MercadoLibre responde 400 con solo avisos: son la única pista.
+  const avisos = Array.isArray(d.cause)
+    ? d.cause.map((c: any) => c?.message ?? c?.code).filter(Boolean)
+    : [];
   const base = d.message ?? d.error ?? `MercadoLibre respondió ${r.status}`;
-  return causas.length ? `${base}: ${causas.join(" · ")}` : String(base);
+  const detalle = causas.length ? causas : avisos;
+  return detalle.length ? `${base}: ${detalle.join(" · ")}` : String(base);
 };
 
 const CORS = {
@@ -245,6 +251,7 @@ type Producto = {
   gallery: number;
   thumbnail: string | null;
   location: "interior" | "exterior" | null;
+  is_analogue: boolean;
   is_active: boolean;
   details: { specs?: string[] } | null;
 };
@@ -264,7 +271,7 @@ type Listing = {
 };
 
 const CAMPOS_PRODUCTO =
-  "id, model, title, provider, category, description, cost, gallery, thumbnail, location, is_active, details";
+  "id, model, title, provider, category, description, cost, gallery, thumbnail, location, is_analogue, is_active, details";
 
 // Cómo se busca y se titula cada categoría de la tienda en MercadoLibre. La
 // palabra va adelante del título porque es lo que la gente escribe en el
@@ -387,6 +394,9 @@ const armarAtributos = async (p: Producto, l: Listing, s: Settings) => {
   if (p.location) {
     deducidos.CAMERA_LOCATIONS = p.location === "interior" ? "Interior" : "Exterior";
   }
+  // Una cámara que no es analógica es IP. Las analógicas (domo, bala) no se
+  // deducen: el formato no está en la base y hay que elegirlo a mano.
+  if (p.category === "camaras" && !p.is_analogue) deducidos.SURVEILLANCE_CAMERA_TYPE = "IP";
   // No tenemos códigos de barras cargados. Sin GTIN, MercadoLibre pide el
   // motivo; si alguno se carga a mano, EMPTY_GTIN_REASON no se manda.
   const valores = { ...deducidos, ...(l.attributes ?? {}) };
@@ -447,6 +457,63 @@ const armarItem = async (
 // repite con family_name.
 const pideFamilyName = (r: { data: any }) =>
   JSON.stringify(r.data ?? "").toLowerCase().includes("family_name");
+
+// ---------------------------------------------------------------------------
+// Catálogo: de dónde sale el GTIN
+// ---------------------------------------------------------------------------
+
+// Para marcas registradas (Ezviz, Dahua, Commax, Hikvision…) MercadoLibre exige
+// el GTIN (código de barras) y no acepta EMPTY_GTIN_REASON. La base no tiene
+// códigos de barras, pero el catálogo de MercadoLibre sí: se busca el producto
+// por marca y modelo y se toma el GTIN del que tenga exactamente el mismo
+// modelo. Si el modelo no coincide, no se adivina: mejor cargarlo a mano que
+// publicar con el código de otro producto.
+
+type Candidato = {
+  id: string;
+  name: string;
+  brand: string | null;
+  model: string | null;
+  gtin: string | null;
+  thumbnail: string | null;
+  exacto: boolean;
+};
+
+// Solo letras y números: "DS-2CE76K0T" y "DS2CE76K0T" son el mismo modelo.
+const modeloNorm = (s: string) => norm(s).replace(/[^a-z0-9]/g, "");
+
+const valorAttr = (attrs: any[], id: string): string | null => {
+  const a = (attrs ?? []).find((x: any) => x?.id === id);
+  return a?.value_name ?? a?.values?.[0]?.name ?? null;
+};
+
+const buscarEnCatalogo = async (token: string, p: Producto): Promise<Candidato[]> => {
+  const q = encodeURIComponent([marca(p) ?? "", p.model].join(" ").trim());
+  const r = await meli<any>(token, `/products/search?status=active&site_id=${MELI_SITE}&q=${q}&limit=10`);
+  if (!r.ok) throw new Error(`No pude buscar en el catálogo: ${errorMeli(r)}`);
+
+  const buscado = modeloNorm(p.model);
+  return (r.data?.results ?? []).map((x: any) => {
+    const model = valorAttr(x.attributes, "MODEL");
+    return {
+      id: x.id,
+      name: x.name,
+      brand: valorAttr(x.attributes, "BRAND"),
+      model,
+      gtin: valorAttr(x.attributes, "GTIN"),
+      thumbnail: x.pictures?.[0]?.url ?? null,
+      exacto: Boolean(model && modeloNorm(model) === buscado),
+    };
+  });
+};
+
+/** El GTIN del candidato del catálogo con el mismo modelo, si hay uno solo claro. */
+const gtinDeCatalogo = (cands: Candidato[]) => {
+  const conGtin = cands.filter((c) => c.exacto && c.gtin);
+  const distintos = new Set(conGtin.map((c) => c.gtin));
+  // Dos productos "iguales" con códigos distintos: no se elige por el usuario.
+  return distintos.size === 1 ? conGtin[0].gtin : null;
+};
 
 // ---------------------------------------------------------------------------
 // Precio
@@ -575,6 +642,11 @@ Deno.serve(async (req) => {
         const token = await getAccessToken(db);
         const r = await meli(token, "/users/me");
         if (!r.ok) return json({ connected: false, auth_url: authUrl, error: errorMeli(r) });
+        // Qué le falta a la cuenta para publicar. MercadoLibre rechaza la
+        // validación con un 400 sin causa concreta cuando la cuenta no puede
+        // listar (sin datos fiscales, sin domicilio, sin Mercado Envíos…), y
+        // estos códigos son la única pista de por qué.
+        const st = r.data.status ?? {};
         return json({
           connected: true,
           user: {
@@ -583,6 +655,11 @@ Deno.serve(async (req) => {
             permalink: r.data.permalink,
             level: r.data.seller_reputation?.level_id ?? null,
           },
+          can_list: st.list?.allow ?? null,
+          list_codes: st.list?.codes ?? [],
+          can_sell: st.sell?.allow ?? null,
+          sell_codes: st.sell?.codes ?? [],
+          mercadoenvios: st.mercadoenvios ?? null,
         });
       } catch (e) {
         return json({ connected: false, auth_url: authUrl, error: (e as Error).message });
@@ -704,6 +781,19 @@ Deno.serve(async (req) => {
           }
         }
 
+        // GTIN desde el catálogo, si no hay uno cargado. Si la búsqueda falla o
+        // no hay coincidencia exacta, se sigue: el validar dirá si hace falta.
+        let gtinNota = "";
+        if (!attrs.GTIN) {
+          try {
+            const gtin = gtinDeCatalogo(await buscarEnCatalogo(token, p));
+            if (gtin) attrs.GTIN = gtin;
+            else gtinNota = " (sin GTIN: no se encontró en el catálogo)";
+          } catch {
+            gtinNota = " (no se pudo consultar el catálogo)";
+          }
+        }
+
         const listingType = actual?.listing_type_id || s.listing_type_id;
         const cotizacion = await cotizar(token, Number(p.cost), s, categoryId!, listingType);
 
@@ -723,8 +813,21 @@ Deno.serve(async (req) => {
         const { error } = await db.from("meli_listings").upsert(fila, { onConflict: "product_id" });
         if (error) throw new Error(error.message);
 
-        return { ok: true, price: cotizacion.price, net_profit: cotizacion.net_profit };
+        return {
+          ok: true,
+          price: cotizacion.price,
+          net_profit: cotizacion.net_profit,
+          ...(gtinNota ? { message: `Preparada${gtinNota}` } : {}),
+        };
       });
+    }
+
+    // --- Catálogo -----------------------------------------------------------
+    if (accion === "catalog") {
+      const productos = await traerProductos();
+      const p = productos.get(ids[0]);
+      if (!p) return json({ error: "No existe el producto" }, 404);
+      return json({ candidates: await buscarEnCatalogo(token, p) });
     }
 
     // --- Recotizar (sin publicar) ------------------------------------------
