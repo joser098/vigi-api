@@ -14,6 +14,7 @@
 //   sync       trae estado, precio y ventas de las publicadas
 //   attributes atributos que pide una categoría, para completarlos a mano
 //   catalog    busca el producto en el catálogo de ML (para sacar el GTIN)
+//   diagnose   valida un producto en variantes, para ver qué rechaza ML
 //
 // NO toca la tienda: no escribe en `products` ni cambia el precio de
 // vigi.com.ar. Todo lo de MercadoLibre vive en `meli_listings` y
@@ -828,6 +829,45 @@ Deno.serve(async (req) => {
       const p = productos.get(ids[0]);
       if (!p) return json({ error: "No existe el producto" }, 404);
       return json({ candidates: await buscarEnCatalogo(token, p) });
+    }
+
+    // --- Diagnóstico ---------------------------------------------------------
+    // Valida la publicación de un producto en varias variantes, para aislar qué
+    // campo hace que MercadoLibre la rechace cuando no dice por qué. Solo usa
+    // /items/validate: no crea nada.
+    if (accion === "diagnose") {
+      const productos = await traerProductos();
+      const listings = await traerListings(ids);
+      const p = productos.get(ids[0]);
+      const l = listings.get(ids[0]);
+      if (!p || !l?.category_id || !l.price) return json({ error: "Primero hay que prepararla" }, 400);
+
+      const base = await armarItem(p, l, s, "title");
+      const { channels: _c, ...sinCanal } = base;
+      const { shipping: _s, ...sinEnvio } = base;
+      const variantes: Record<string, unknown> = {
+        completa: base,
+        sin_canal: sinCanal,
+        envio_minimo: { ...base, shipping: { mode: "me2" } },
+        sin_envio: sinEnvio,
+      };
+
+      const resultados: Record<string, unknown> = {};
+      for (const [nombre, cuerpo] of Object.entries(variantes)) {
+        const r = await meli(token, "/items/validate", { method: "POST", body: cuerpo });
+        resultados[nombre] = { status: r.status, respuesta: r.data };
+      }
+
+      const me = await meli<any>(token, "/users/me");
+      const prefs = me.ok
+        ? await meli<any>(token, `/users/${me.data.id}/shipping_preferences`)
+        : null;
+
+      return json({
+        item: base,
+        validaciones: resultados,
+        shipping_preferences: prefs?.data ?? null,
+      });
     }
 
     // --- Recotizar (sin publicar) ------------------------------------------
