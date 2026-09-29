@@ -6,6 +6,8 @@ const orderStatusSchema = z.enum([
    "en_preparacion",
    "enviado",
    "entregado",
+   "cancelado",
+   "reembolsado",
 ]);
 
 // Canonical form: lowercase, unaccented. The nav in vigi-app links to
