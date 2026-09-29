@@ -842,15 +842,20 @@ Deno.serve(async (req) => {
       const l = listings.get(ids[0]);
       if (!p || !l?.category_id || !l.price) return json({ error: "Primero hay que prepararla" }, 400);
 
-      const base = await armarItem(p, l, s, "title");
-      const { channels: _c, ...sinCanal } = base;
-      const { shipping: _s, ...sinEnvio } = base;
-      const variantes: Record<string, unknown> = {
-        completa: base,
-        sin_canal: sinCanal,
-        envio_minimo: { ...base, shipping: { mode: "me2" } },
-        sin_envio: sinEnvio,
-      };
+      const modo = body.mode === "family" ? "family" : "title";
+      const base: Record<string, unknown> = await armarItem(p, l, s, modo);
+
+      // Variantes a probar: { nombre: { set: {campo: valor}, unset: ["campo"] } }.
+      // Si el panel no manda ninguna, se prueba la publicación tal cual.
+      const pedidas: Record<string, { set?: Record<string, unknown>; unset?: string[] }> =
+        body.variants && typeof body.variants === "object" ? body.variants : { tal_cual: {} };
+
+      const variantes: Record<string, unknown> = {};
+      for (const [nombre, v] of Object.entries(pedidas).slice(0, 8)) {
+        const cuerpo: Record<string, unknown> = { ...base, ...(v?.set ?? {}) };
+        for (const campo of v?.unset ?? []) delete cuerpo[campo];
+        variantes[nombre] = cuerpo;
+      }
 
       const resultados: Record<string, unknown> = {};
       for (const [nombre, cuerpo] of Object.entries(variantes)) {
