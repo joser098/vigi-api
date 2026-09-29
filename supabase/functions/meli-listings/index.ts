@@ -15,6 +15,7 @@
 //   attributes atributos que pide una categoría, para completarlos a mano
 //   catalog    busca el producto en el catálogo de ML (para sacar el GTIN)
 //   diagnose   valida un producto en variantes, para ver qué rechaza ML
+//   catalog_*  publicación de catálogo: check, optin y precio (ver más abajo)
 //
 // NO toca la tienda: no escribe en `products` ni cambia el precio de
 // vigi.com.ar. Todo lo de MercadoLibre vive en `meli_listings` y
@@ -239,6 +240,7 @@ type Settings = {
   rounding: number;
   vat: string;
   warranty_time: string;
+  catalog_min_margin_pct: number;
 };
 
 type Producto = {
@@ -269,6 +271,9 @@ type Listing = {
   quantity: number | null;
   attributes: Record<string, string>;
   price: number | null;
+  catalog_product_id: string | null;
+  catalog_item_id: string | null;
+  catalog_price: number | null;
 };
 
 const CAMPOS_PRODUCTO =
@@ -580,9 +585,11 @@ const cotizar = async (
   costo: number,
   s: Settings,
   categoryId: string,
-  listingType: string
+  listingType: string,
+  // Por defecto el margen de la tradicional; el catálogo usa su mínimo.
+  margenPct: number = Number(s.margin_pct)
 ) => {
-  const objetivo = costo * (1 + Number(s.margin_pct) / 100);
+  const objetivo = costo * (1 + margenPct / 100);
   const imp = Number(s.taxes_pct) / 100;
 
   let precio = redondearArriba(objetivo / (1 - 0.16 - imp), s.rounding);
@@ -1046,16 +1053,160 @@ Deno.serve(async (req) => {
       });
     }
 
+    // --- Catálogo -----------------------------------------------------------
+    //
+    // catalog_check  elegibilidad (antes del optin) o competencia (después),
+    //                y el precio mínimo con el margen de catálogo
+    // catalog_optin  crea la publicación de catálogo desde la tradicional
+    // catalog_price  cambia el precio de la de catálogo, nunca debajo del mínimo
+
+    const minimoCatalogo = async (p: Producto, l: Listing) => {
+      if (p.cost == null || !l.category_id) return null;
+      const c = await cotizar(
+        token,
+        Number(p.cost),
+        s,
+        l.category_id,
+        l.listing_type_id || s.listing_type_id,
+        Number(s.catalog_min_margin_pct)
+      );
+      return c.price;
+    };
+
+    if (accion === "catalog_check") {
+      const productos = await traerProductos();
+      const listings = await traerListings(ids);
+
+      return porProducto(async (id) => {
+        const p = productos.get(id);
+        const l = listings.get(id);
+        if (!p || !l?.meli_item_id) return { ok: false, message: "Primero hay que publicarla" };
+
+        const cambios: Record<string, unknown> = {
+          catalog_min_price: await minimoCatalogo(p, l),
+          catalog_checked_at: new Date().toISOString(),
+        };
+
+        if (!l.catalog_item_id) {
+          const e = await meli<any>(token, `/items/${l.meli_item_id}/catalog_listing_eligibility`);
+          if (!e.ok) return { ok: false, message: errorMeli(e) };
+          cambios.catalog_status =
+            e.data?.status ?? (e.data?.buy_box_eligible ? "READY_FOR_OPTIN" : "NOT_ELIGIBLE");
+
+          // Si MercadoLibre ya la asoció a una ficha (por el GTIN), se toma esa.
+          if (!l.catalog_product_id) {
+            const it = await meli<any>(token, `/items/${l.meli_item_id}?attributes=catalog_product_id`);
+            if (it.ok && it.data?.catalog_product_id) cambios.catalog_product_id = it.data.catalog_product_id;
+          }
+        } else {
+          const w = await meli<any>(
+            token,
+            `/items/${l.catalog_item_id}/price_to_win?siteId=${MELI_SITE}&version=v2`
+          );
+          if (!w.ok) return { ok: false, message: errorMeli(w) };
+          cambios.catalog_status = w.data?.status ?? null;
+          cambios.price_to_win = w.data?.price_to_win ?? null;
+          cambios.catalog_price = w.data?.current_price ?? l.catalog_price;
+        }
+
+        await guardar(id, cambios);
+        return { ok: true, message: String(cambios.catalog_status ?? "") };
+      });
+    }
+
+    if (accion === "catalog_optin") {
+      const listings = await traerListings(ids);
+
+      return porProducto(async (id) => {
+        const l = listings.get(id);
+        if (!l?.meli_item_id) return { ok: false, message: "Primero hay que publicarla" };
+        if (l.catalog_item_id) return { ok: false, message: "Ya está en catálogo" };
+        if (!l.catalog_product_id) return { ok: false, message: "Falta elegir la ficha del catálogo" };
+
+        const r = await meli<any>(token, "/items/catalog_listings", {
+          method: "POST",
+          body: { item_id: l.meli_item_id, catalog_product_id: l.catalog_product_id },
+        });
+        if (!r.ok) {
+          await guardar(id, { errors: r.data });
+          return { ok: false, message: errorMeli(r) };
+        }
+
+        await guardar(id, {
+          catalog_item_id: r.data.id,
+          catalog_price: r.data.price ?? l.price,
+          catalog_status: "listed",
+          catalog_checked_at: new Date().toISOString(),
+        });
+        return { ok: true, message: `En catálogo: ${r.data.id}` };
+      });
+    }
+
+    if (accion === "catalog_price") {
+      const productos = await traerProductos();
+      const listings = await traerListings(ids);
+      const pedido = Number(body.price);
+      if (!Number.isFinite(pedido) || pedido <= 0) return json({ error: "Falta el precio" }, 400);
+
+      return porProducto(async (id) => {
+        const p = productos.get(id);
+        const l = listings.get(id);
+        if (!p || !l?.catalog_item_id) return { ok: false, message: "No está en catálogo" };
+
+        // El piso se recalcula acá y no se toma de la fila: si cambió el costo
+        // desde la última consulta, el mínimo guardado ya no sirve.
+        const minimo = await minimoCatalogo(p, l);
+        if (minimo == null) return { ok: false, message: "Sin costo o categoría no se puede calcular el mínimo" };
+        if (pedido < minimo) {
+          return {
+            ok: false,
+            message: `$${pedido} deja menos del ${s.catalog_min_margin_pct}% de ganancia: el mínimo es $${minimo}`,
+          };
+        }
+
+        const r = await meli<any>(token, `/items/${l.catalog_item_id}`, {
+          method: "PUT",
+          body: { price: pedido },
+        });
+        if (!r.ok) return { ok: false, message: errorMeli(r) };
+
+        await guardar(id, { catalog_price: pedido, catalog_min_price: minimo });
+        return { ok: true, message: `Precio de catálogo: $${pedido}` };
+      });
+    }
+
     // --- Sincronizar --------------------------------------------------------
     if (accion === "sync") {
       const { data, error } = await db
         .from("meli_listings")
-        .select("product_id, meli_item_id")
+        .select("product_id, meli_item_id, catalog_item_id")
         .not("meli_item_id", "is", null);
       if (error) throw new Error(error.message);
 
-      const filas = data as Array<{ product_id: string; meli_item_id: string }>;
+      const filas = data as Array<{ product_id: string; meli_item_id: string; catalog_item_id: string | null }>;
       const porItem = new Map(filas.map((f) => [f.meli_item_id, f.product_id]));
+
+      // Las de catálogo son otro item: se traen aparte y suman sus ventas.
+      const porCatalogo = new Map(
+        filas.filter((f) => f.catalog_item_id).map((f) => [f.catalog_item_id!, f.product_id])
+      );
+      const vendidasCatalogo = new Map<string, number>();
+      const catIds = [...porCatalogo.keys()];
+      for (let i = 0; i < catIds.length; i += 20) {
+        const r = await meli<any[]>(
+          token,
+          `/items?ids=${catIds.slice(i, i + 20).join(",")}&attributes=id,price,sold_quantity`
+        );
+        if (!r.ok || !Array.isArray(r.data)) continue;
+        for (const x of r.data) {
+          const it = x?.body;
+          const productId = it?.id ? porCatalogo.get(it.id) : undefined;
+          if (x?.code !== 200 || !productId) continue;
+          vendidasCatalogo.set(productId, it.sold_quantity ?? 0);
+          await guardar(productId, { catalog_price: it.price });
+        }
+      }
+
       let actualizadas = 0;
 
       // El multiget acepta hasta 20 ids por pedido.
@@ -1077,7 +1228,7 @@ Deno.serve(async (req) => {
             status: estadoML(it.status),
             price: it.price,
             quantity: it.available_quantity,
-            sold_quantity: it.sold_quantity ?? 0,
+            sold_quantity: (it.sold_quantity ?? 0) + (vendidasCatalogo.get(productId) ?? 0),
             permalink: it.permalink,
             synced_at: new Date().toISOString(),
           });

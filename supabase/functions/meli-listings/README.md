@@ -43,6 +43,21 @@ precio no cambia (2 o 3 consultas).
 Publicar siempre valida antes con `POST /items/validate`: si MercadoLibre la
 rechaza, no se crea nada y los errores quedan en `meli_listings.errors`.
 
+## Catálogo (migración 0018)
+
+Cada producto puede tener dos publicaciones: la tradicional y la de catálogo,
+que se crea desde la tradicional con `POST /items/catalog_listings` (optin) y
+compite por el botón de compra de la ficha.
+
+- `catalog_check`: antes del optin, la elegibilidad
+  (`/items/{id}/catalog_listing_eligibility`) y la ficha si MercadoLibre ya la
+  asignó por GTIN. Después, la competencia (`/items/{id}/price_to_win`): estado
+  y precio para ganar.
+- `catalog_optin`: necesita `catalog_product_id`, que se elige en el panel.
+- `catalog_price`: cambia el precio de la de catálogo. **Nunca por debajo** del
+  precio que deja `meli_settings.catalog_min_margin_pct` de ganancia (8% por
+  defecto), recalculado en el momento con el costo actual.
+
 ## Lo que se aprendió probando contra la API real (29/09/2026)
 
 - **La cuenta está en el modelo User Products:** pide `family_name` en vez de
