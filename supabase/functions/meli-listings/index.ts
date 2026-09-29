@@ -459,6 +459,17 @@ const armarItem = async (
 const pideFamilyName = (r: { data: any }) =>
   JSON.stringify(r.data ?? "").toLowerCase().includes("family_name");
 
+// Con family_name (cuentas en el modelo User Products), /items/validate
+// responde 400 "Validation error" trayendo solo avisos y ningún error, aun con
+// la publicación completa: probado con 18 variantes el 29/09/2026. Cuando es
+// así, la validación no está diciendo que falte algo, así que se toma como
+// aprobada. Si hay aunque sea un error, frena como siempre.
+const soloAvisos = (r: { ok: boolean; data: any }) => {
+  if (r.ok) return false;
+  const causas = Array.isArray(r.data?.cause) ? r.data.cause : [];
+  return causas.length > 0 && causas.every((c: any) => c?.type === "warning");
+};
+
 // ---------------------------------------------------------------------------
 // Catálogo: de dónde sale el GTIN
 // ---------------------------------------------------------------------------
@@ -917,14 +928,21 @@ Deno.serve(async (req) => {
           v = await meli(token, "/items/validate", { method: "POST", body: item });
         }
 
-        if (!v.ok) {
+        const conAvisos = soloAvisos(v);
+        if (!v.ok && !conAvisos) {
           await guardar(id, { status: "error", errors: v.data });
           return { ok: false, message: errorMeli(v) };
         }
 
         if (accion === "validate") {
-          await guardar(id, { status: "ready", errors: null });
-          return { ok: true, message: "MercadoLibre la validó sin errores" };
+          // Los avisos se guardan igual, para que se vean en la fila.
+          await guardar(id, { status: "ready", errors: conAvisos ? v.data : null });
+          return {
+            ok: true,
+            message: conAvisos
+              ? `Sin errores (MercadoLibre solo avisa: ${errorMeli(v)})`
+              : "MercadoLibre la validó sin errores",
+          };
         }
 
         const r = await meli<any>(token, "/items", { method: "POST", body: item });
