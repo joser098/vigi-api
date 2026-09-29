@@ -43,11 +43,25 @@ precio no cambia (2 o 3 consultas).
 Publicar siempre valida antes con `POST /items/validate`: si MercadoLibre la
 rechaza, no se crea nada y los errores quedan en `meli_listings.errors`.
 
-## Pendiente de verificar contra la API real
+## Lo que se aprendió probando contra la API real (29/09/2026)
 
-- Si la cuenta está en el modelo **User Products**, MercadoLibre pide
-  `family_name` en vez de `title`. La function prueba con `title` y, si el
-  error menciona `family_name`, repite con eso.
-- En categorías de catálogo (como Cámaras de Seguridad) MercadoLibre puede
-  exigir asociar la publicación a un producto del catálogo. Si pasa, el error
-  aparece en la fila y hay que sumar ese paso.
+- **La cuenta está en el modelo User Products:** pide `family_name` en vez de
+  `title`. La function prueba con `title` y, si el error menciona
+  `family_name`, repite con eso.
+- **`/items/validate` con `family_name` responde 400 "Validation error" con
+  solo avisos** (`shipping.lost_me1_by_user`, `item.shipping.mandatory_free_shipping`)
+  aunque la publicación esté completa: se probaron 18 variantes y la
+  publicación real (`POST /items`) salió bien. Por eso un 400 con solo avisos se
+  toma como aprobado; con cualquier error, frena.
+- **GTIN obligatorio** para marcas registradas (Ezviz, Dahua, Commax…): no
+  acepta `EMPTY_GTIN_REASON`. Se busca en el catálogo (`/products/search`) y
+  solo se completa solo con una coincidencia exacta de modelo; si no, se elige
+  a mano en el panel.
+- **Fotos:** la carpeta en R2 lleva el modelo con "+" literales. MercadoLibre
+  decodifica "+" como espacio, no encuentra la foto y pausa la publicación. Se
+  mandan con `%2B`. Si una publicación quedó pausada sin foto, `update` con
+  `pictures: true` las reenvía.
+- `status.mercadoenvios` de `/users/me` puede decir `not_accepted` con
+  Mercado Envíos activo: lo que vale son `/users/{id}/shipping_preferences`.
+- `diagnose` valida un producto en variantes (`set` / `unset` de campos) sin
+  crear nada: sirve para aislar qué rechaza MercadoLibre.

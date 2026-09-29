@@ -328,13 +328,18 @@ const armarTitulo = (p: Producto) => {
   return titulo;
 };
 
-const urlModel = (m: string) => encodeURIComponent(m).replace(/%20/g, "+");
+// Las fotos están en R2 bajo una carpeta que lleva el modelo con los espacios
+// cambiados por "+" literales ("CB2+Black+2K+4G"). La tienda las pide así y
+// anda, pero MercadoLibre decodifica el "+" como espacio al descargarla, pide
+// "CB2 Black 2K 4G", recibe 404 y pausa la publicación por falta de foto. Con
+// el "+" escrito como %2B, R2 recibe el nombre real.
+const carpetaFotos = (m: string) => encodeURIComponent(m.replace(/ /g, "+"));
 
-// Las mismas URLs públicas que usa la tienda. MercadoLibre las descarga y las
-// copia a sus servidores: no quedan enlazadas a las nuestras.
+// MercadoLibre las descarga y las copia a sus servidores: no quedan enlazadas
+// a las nuestras.
 const fotos = (p: Producto) => {
   const n = Math.min(Math.max(p.gallery ?? 0, 0), 10);
-  const urls = Array.from({ length: n }, (_, i) => `${ASSETS}/gallery/${urlModel(p.model)}/${i}.png`);
+  const urls = Array.from({ length: n }, (_, i) => `${ASSETS}/gallery/${carpetaFotos(p.model)}/${i}.png`);
   if (urls.length === 0 && p.thumbnail) urls.push(p.thumbnail);
   return urls.map((source) => ({ source }));
 };
@@ -979,12 +984,20 @@ Deno.serve(async (req) => {
     // --- Cambios sobre publicadas -------------------------------------------
     if (accion === "update") {
       const listings = await traerListings(ids);
+      const productos = body.pictures ? await traerProductos() : new Map<string, Producto>();
 
       return porProducto(async (id) => {
         const l = listings.get(id);
         if (!l?.meli_item_id) return { ok: false, message: "No está publicada" };
 
         const cambios: Record<string, unknown> = {};
+        // Reenviar las fotos: sirve cuando MercadoLibre no pudo descargarlas y
+        // pausó la publicación.
+        if (body.pictures) {
+          const p = productos.get(id);
+          if (!p) return { ok: false, message: "No existe el producto" };
+          cambios.pictures = fotos(p);
+        }
         if (["active", "paused", "closed"].includes(body.status)) cambios.status = body.status;
         if (Number.isInteger(body.quantity) && body.quantity >= 0) {
           cambios.available_quantity = body.quantity;
