@@ -16,6 +16,8 @@
 //   catalog    busca el producto en el catálogo de ML (para sacar el GTIN)
 //   diagnose   valida un producto en variantes, para ver qué rechaza ML
 //   catalog_*  publicación de catálogo: check, optin y precio (ver más abajo)
+//   installments  cambia las cuotas sin interés (y el tipo y el precio)
+//   reset      suelta una publicación finalizada para volver a publicar
 //
 // NO toca la tienda: no escribe en `products` ni cambia el precio de
 // vigi.com.ar. Todo lo de MercadoLibre vive en `meli_listings` y
@@ -241,6 +243,7 @@ type Settings = {
   vat: string;
   warranty_time: string;
   catalog_min_margin_pct: number;
+  installments: Cuotas;
 };
 
 type Producto = {
@@ -274,6 +277,24 @@ type Listing = {
   catalog_product_id: string | null;
   catalog_item_id: string | null;
   catalog_price: number | null;
+  installments: Cuotas | null;
+};
+
+// Cuotas sin interés (migración 0019). En Argentina salen del tipo de
+// publicación más una campaña:
+//   none  gold_special (Clásica)
+//   3x    gold_pro + tag 3x_campaign (3 cuotas al mismo precio)
+//   6x    gold_pro sin tag (6 cuotas, lo que Premium da por defecto)
+type Cuotas = "none" | "3x" | "6x";
+type Modalidad = { cuotas: Cuotas; listingType: string; tag: string | null };
+
+const TAG_3X = "3x_campaign";
+
+const modalidad = (l: { installments?: Cuotas | null } | null | undefined, s: Settings): Modalidad => {
+  const c = (l?.installments ?? s.installments ?? "none") as Cuotas;
+  if (c === "3x") return { cuotas: c, listingType: "gold_pro", tag: TAG_3X };
+  if (c === "6x") return { cuotas: c, listingType: "gold_pro", tag: null };
+  return { cuotas: "none", listingType: "gold_special", tag: null };
 };
 
 const CAMPOS_PRODUCTO =
@@ -326,6 +347,9 @@ const armarTitulo = (p: Producto) => {
 
   let titulo = base.slice(0, MAX_TITULO);
   for (const spec of specsDe(p)) {
+    // "Cerradura Inteligente" como spec de una cerradura ya está en el título:
+    // repetirlo gasta caracteres y MercadoLibre lo castiga como relleno.
+    if (norm(titulo).includes(norm(spec))) continue;
     const candidato = `${titulo} ${spec}`;
     if (candidato.length > MAX_TITULO) break;
     titulo = candidato;
@@ -347,6 +371,25 @@ const fotos = (p: Producto) => {
   const urls = Array.from({ length: n }, (_, i) => `${ASSETS}/gallery/${carpetaFotos(p.model)}/${i}.png`);
   if (urls.length === 0 && p.thumbnail) urls.push(p.thumbnail);
   return urls.map((source) => ({ source }));
+};
+
+// MercadoLibre pide fotos de al menos 500 × 500 px (los dos lados). Con una más chica no
+// rechaza la publicación: la crea y la manda a revisión, que es peor porque
+// no avisa por qué.
+const MIN_FOTO_PX = 500;
+
+/** Ancho y alto de un PNG leyendo solo su cabecera. null si no es PNG o no responde. */
+const medidasPng = async (url: string): Promise<[number, number] | null> => {
+  try {
+    const r = await fetch(url, { headers: { Range: "bytes=0-31" } });
+    const b = new Uint8Array(await r.arrayBuffer());
+    const esPng = b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47;
+    if (!esPng || b.length < 24) return null;
+    const v = new DataView(b.buffer);
+    return [v.getUint32(16), v.getUint32(20)];
+  } catch {
+    return null;
+  }
 };
 
 // Sin datos de contacto ni links: MercadoLibre los prohíbe en la descripción.
@@ -444,7 +487,7 @@ const armarItem = async (
     available_quantity: l.quantity ?? s.default_quantity,
     buying_mode: "buy_it_now",
     condition: "new",
-    listing_type_id: l.listing_type_id || s.listing_type_id,
+    listing_type_id: modalidad(l, s).listingType,
     // Solo MercadoLibre: sin Mercado Shops, que sería otra tienda aparte de
     // vigi.com.ar.
     channels: ["marketplace"],
@@ -538,6 +581,46 @@ const gtinDeCatalogo = (cands: Candidato[]) => {
 };
 
 // ---------------------------------------------------------------------------
+// 3 cuotas sin interés: no todas las cuentas ni categorías la tienen
+// ---------------------------------------------------------------------------
+
+const cache3x = new Map<string, boolean>();
+
+const vendedor3x = async (token: string, sellerId: number) => {
+  const r = await meli(token, `/special_installments/${TAG_3X}/sellers/${sellerId}`);
+  return r.ok;
+};
+
+const categoria3x = async (token: string, categoryId: string) => {
+  const guardado = cache3x.get(categoryId);
+  if (guardado !== undefined) return guardado;
+  const r = await meli<any>(token, `/special_installments/${TAG_3X}/categories/${categoryId}/enabled`, {
+    method: "POST",
+  });
+  const ok = Boolean(r.ok && r.data?.enabled);
+  cache3x.set(categoryId, ok);
+  return ok;
+};
+
+/**
+ * Deja las tags del item con la campaña de 3 cuotas puesta o sacada.
+ *
+ * El PUT de tags reemplaza la lista entera: hay que mandar también las que ya
+ * tiene, o se pierden.
+ */
+const ponerTag3x = async (token: string, itemId: string, activar: boolean) => {
+  const it = await meli<any>(token, `/items/${itemId}?attributes=tags`);
+  if (!it.ok) throw new Error(`No pude leer la publicación: ${errorMeli(it)}`);
+  const actuales: string[] = it.data?.tags ?? [];
+  const tiene = actuales.includes(TAG_3X);
+  if (tiene === activar) return;
+
+  const tags = activar ? [...actuales, TAG_3X] : actuales.filter((t) => t !== TAG_3X);
+  const r = await meli(token, `/items/${itemId}`, { method: "PUT", body: { tags } });
+  if (!r.ok) throw new Error(`No pude ${activar ? "activar" : "sacar"} las 3 cuotas: ${errorMeli(r)}`);
+};
+
+// ---------------------------------------------------------------------------
 // Precio
 // ---------------------------------------------------------------------------
 
@@ -546,12 +629,16 @@ type Comision = { total: number; porcentaje: number; fijo: number };
 const comision = async (
   token: string,
   precio: number,
-  listingType: string,
+  modo: Modalidad,
   categoryId: string
 ): Promise<Comision> => {
+  const listingType = modo.listingType;
+  // Con la campaña de cuotas, MercadoLibre suma el cargo por financiarlas
+  // (financing_add_on_fee) dentro de percentage_fee.
   const r = await meli<any>(
     token,
-    `/sites/${MELI_SITE}/listing_prices?price=${precio}&listing_type_id=${listingType}&category_id=${categoryId}`
+    `/sites/${MELI_SITE}/listing_prices?price=${precio}&listing_type_id=${listingType}&category_id=${categoryId}` +
+      (modo.tag ? `&tags=${modo.tag}` : "")
   );
   if (!r.ok) throw new Error(`No pude consultar la comisión: ${errorMeli(r)}`);
 
@@ -585,7 +672,7 @@ const cotizar = async (
   costo: number,
   s: Settings,
   categoryId: string,
-  listingType: string,
+  modo: Modalidad,
   // Por defecto el margen de la tradicional; el catálogo usa su mínimo.
   margenPct: number = Number(s.margin_pct)
 ) => {
@@ -596,7 +683,7 @@ const cotizar = async (
   let anterior = 0;
 
   for (let i = 0; i < 8 && precio !== anterior; i++) {
-    const c = await comision(token, precio, listingType, categoryId);
+    const c = await comision(token, precio, modo, categoryId);
     const envio = precio >= s.free_shipping_min ? Number(s.shipping_cost) : 0;
     const nuevo = redondearArriba(
       (objetivo + c.fijo + envio) / (1 - c.porcentaje / 100 - imp),
@@ -608,7 +695,7 @@ const cotizar = async (
     precio = i >= 5 ? Math.max(nuevo, precio) : nuevo;
   }
 
-  const c = await comision(token, precio, listingType, categoryId);
+  const c = await comision(token, precio, modo, categoryId);
   const envio = precio >= s.free_shipping_min ? Number(s.shipping_cost) : 0;
   const impuestos = Math.round(precio * imp);
   const ganancia = Math.round(precio - c.total - envio - impuestos - costo);
@@ -684,6 +771,7 @@ Deno.serve(async (req) => {
           can_sell: st.sell?.allow ?? null,
           sell_codes: st.sell?.codes ?? [],
           mercadoenvios: st.mercadoenvios ?? null,
+          installments_3x: await vendedor3x(token, r.data.id),
         });
       } catch (e) {
         return json({ connected: false, auth_url: authUrl, error: (e as Error).message });
@@ -818,8 +906,17 @@ Deno.serve(async (req) => {
           }
         }
 
-        const listingType = actual?.listing_type_id || s.listing_type_id;
-        const cotizacion = await cotizar(token, Number(p.cost), s, categoryId!, listingType);
+        // Si se pidieron 3 cuotas y la categoría no las admite, la publicación
+        // queda sin cuotas y se avisa: mejor eso que un precio calculado con
+        // una comisión que después no se aplica.
+        let modo = modalidad(actual, s);
+        let cuotasNota = "";
+        if (modo.tag === TAG_3X && !(await categoria3x(token, categoryId!))) {
+          modo = modalidad({ installments: "none" }, s);
+          cuotasNota = " (esta categoría no admite 3 cuotas sin interés: queda sin cuotas)";
+        }
+        const listingType = modo.listingType;
+        const cotizacion = await cotizar(token, Number(p.cost), s, categoryId!, modo);
 
         const fila = {
           product_id: id,
@@ -828,6 +925,9 @@ Deno.serve(async (req) => {
           category_id: categoryId,
           category_name: categoryName,
           listing_type_id: listingType,
+          // Se guardan las cuotas con las que se calculó el precio: si después
+          // cambia la configuración, esta fila sigue siendo coherente.
+          installments: modo.cuotas,
           quantity: actual?.quantity ?? s.default_quantity,
           attributes: attrs,
           errors: null,
@@ -841,7 +941,7 @@ Deno.serve(async (req) => {
           ok: true,
           price: cotizacion.price,
           net_profit: cotizacion.net_profit,
-          ...(gtinNota ? { message: `Preparada${gtinNota}` } : {}),
+          ...(gtinNota || cuotasNota ? { message: `Preparada${gtinNota}${cuotasNota}` } : {}),
         };
       });
     }
@@ -910,7 +1010,7 @@ Deno.serve(async (req) => {
         if (p.cost == null) return { ok: false, message: "El producto no tiene costo cargado" };
         if (!l.category_id) return { ok: false, message: "Falta la categoría" };
 
-        const c = await cotizar(token, Number(p.cost), s, l.category_id, l.listing_type_id || s.listing_type_id);
+        const c = await cotizar(token, Number(p.cost), s, l.category_id, modalidad(l, s));
         await guardar(id, { ...c, ...(l.meli_item_id ? {} : { status: "draft" }) });
         return { ok: true, price: c.price, net_profit: c.net_profit };
       });
@@ -928,6 +1028,17 @@ Deno.serve(async (req) => {
         if (!p.is_active) return { ok: false, message: "El producto está desactivado en la tienda" };
         if (l.meli_item_id) return { ok: false, message: "Ya está publicada" };
         if (!l.category_id || !l.price) return { ok: false, message: "Falta categoría o precio" };
+
+        // La foto principal, antes que nada: con una chica MercadoLibre la manda
+        // a revisión sin explicar por qué.
+        const principal = fotos(p)[0]?.source;
+        const medidas = principal ? await medidasPng(principal) : null;
+        if (medidas && Math.min(...medidas) < MIN_FOTO_PX) {
+          return {
+            ok: false,
+            message: `La foto principal mide ${medidas[0]}×${medidas[1]} px: MercadoLibre pide al menos ${MIN_FOTO_PX}×${MIN_FOTO_PX}. Subí una más grande desde la galería del producto.`,
+          };
+        }
 
         // Primero siempre se valida: si MercadoLibre la rechaza, no se crea nada.
         let modo: "title" | "family" = "title";
@@ -979,12 +1090,116 @@ Deno.serve(async (req) => {
           body: { plain_text: armarDescripcion(p, s) },
         });
 
+        // Las fotos se mandan de nuevo. En la creación MercadoLibre a veces no
+        // las descarga (pasó en todas las primeras publicaciones) y pausa la
+        // publicación por falta de foto; el segundo envío entra siempre.
+        const avisos: string[] = [];
+        const f = await meli(token, `/items/${r.data.id}`, { method: "PUT", body: { pictures: fotos(p) } });
+        if (!f.ok) avisos.push(`no se pudieron reenviar las fotos: ${errorMeli(f)}`);
+
+        // La campaña de 3 cuotas se activa con una tag, sobre el item ya creado.
+        if (!d.ok) avisos.push(`sin descripción: ${errorMeli(d)}`);
+        if (modalidad(l, s).tag === TAG_3X) {
+          try {
+            await ponerTag3x(token, r.data.id, true);
+          } catch (e) {
+            avisos.push((e as Error).message);
+          }
+        }
+
         return {
           ok: true,
           meli_item_id: r.data.id,
           permalink: r.data.permalink,
-          message: d.ok ? "Publicada" : `Publicada, pero sin descripción: ${errorMeli(d)}`,
+          message: avisos.length ? `Publicada, pero ${avisos.join(" · ")}` : "Publicada",
         };
+      });
+    }
+
+    // --- Cuotas sin interés -------------------------------------------------
+    // Cambia las cuotas de una publicación. En las ya publicadas eso implica
+    // cambiar el tipo (Clásica ↔ Premium), poner o sacar la campaña de 3
+    // cuotas y actualizar el precio, que cambia con la comisión.
+    if (accion === "installments") {
+      const nuevas = String(body.installments ?? "") as Cuotas;
+      if (!["none", "3x", "6x"].includes(nuevas)) return json({ error: "Cuotas inválidas" }, 400);
+
+      const productos = await traerProductos();
+      const listings = await traerListings(ids);
+
+      return porProducto(async (id) => {
+        const p = productos.get(id);
+        const l = listings.get(id);
+        if (!p || !l?.category_id) return { ok: false, message: "Primero hay que prepararla" };
+        if (p.cost == null) return { ok: false, message: "El producto no tiene costo cargado" };
+
+        const modo = modalidad({ installments: nuevas }, s);
+        if (modo.tag === TAG_3X && !(await categoria3x(token, l.category_id))) {
+          return { ok: false, message: "Esta categoría no admite 3 cuotas sin interés" };
+        }
+
+        const c = await cotizar(token, Number(p.cost), s, l.category_id, modo);
+
+        if (l.meli_item_id) {
+          const actual = modalidad(l, s);
+          if (actual.listingType !== modo.listingType) {
+            const t = await meli(token, `/items/${l.meli_item_id}/listing_type`, {
+              method: "POST",
+              body: { id: modo.listingType },
+            });
+            if (!t.ok) return { ok: false, message: `No pude cambiar el tipo de publicación: ${errorMeli(t)}` };
+          }
+          await ponerTag3x(token, l.meli_item_id, modo.tag === TAG_3X);
+
+          if (Number(l.price) !== c.price) {
+            const r = await meli(token, `/items/${l.meli_item_id}`, { method: "PUT", body: { price: c.price } });
+            if (!r.ok) return { ok: false, message: `Cuotas cambiadas, pero no el precio: ${errorMeli(r)}` };
+          }
+        }
+
+        await guardar(id, {
+          installments: nuevas,
+          listing_type_id: modo.listingType,
+          ...c,
+          ...(l.meli_item_id ? { synced_at: new Date().toISOString() } : { status: "draft" }),
+        });
+        return { ok: true, price: c.price, net_profit: c.net_profit };
+      });
+    }
+
+    // --- Volver a borrador ---------------------------------------------------
+    // Una publicación finalizada o suspendida no se reactiva: se publica una
+    // nueva. Esto suelta el id viejo para que la fila se pueda volver a
+    // preparar y publicar (por ejemplo, en otra categoría). Solo si en
+    // MercadoLibre ya no está activa: nunca deja una publicación viva sin
+    // registro.
+    if (accion === "reset") {
+      const listings = await traerListings(ids);
+
+      return porProducto(async (id) => {
+        const l = listings.get(id);
+        if (!l?.meli_item_id) return { ok: false, message: "No tiene publicación" };
+
+        const it = await meli<any>(token, `/items/${l.meli_item_id}?attributes=status`);
+        const estado = it.ok ? String(it.data?.status ?? "") : "";
+        if (["active", "paused", "under_review"].includes(estado)) {
+          return { ok: false, message: `En MercadoLibre sigue ${estado}: finalizala primero` };
+        }
+
+        await guardar(id, {
+          meli_item_id: null,
+          permalink: null,
+          status: "draft",
+          errors: null,
+          sold_quantity: 0,
+          synced_at: null,
+          catalog_item_id: null,
+          catalog_status: null,
+          catalog_price: null,
+          price_to_win: null,
+          catalog_checked_at: null,
+        });
+        return { ok: true, message: `Liberada (la anterior, ${l.meli_item_id}, quedó ${estado || "sin estado"})` };
       });
     }
 
@@ -1033,7 +1248,7 @@ Deno.serve(async (req) => {
         if (!p || !l?.meli_item_id) return { ok: false, message: "No está publicada" };
         if (p.cost == null) return { ok: false, message: "El producto no tiene costo cargado" };
 
-        const c = await cotizar(token, Number(p.cost), s, l.category_id!, l.listing_type_id || s.listing_type_id);
+        const c = await cotizar(token, Number(p.cost), s, l.category_id!, modalidad(l, s));
 
         if (Number(l.price) !== c.price) {
           const r = await meli(token, `/items/${l.meli_item_id}`, {
@@ -1067,7 +1282,7 @@ Deno.serve(async (req) => {
         Number(p.cost),
         s,
         l.category_id,
-        l.listing_type_id || s.listing_type_id,
+        modalidad(l, s),
         Number(s.catalog_min_margin_pct)
       );
       return c.price;

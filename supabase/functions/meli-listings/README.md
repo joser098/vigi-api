@@ -58,6 +58,26 @@ compite por el botón de compra de la ficha.
   precio que deja `meli_settings.catalog_min_margin_pct` de ganancia (8% por
   defecto), recalculado en el momento con el costo actual.
 
+## Cuotas sin interés (migración 0019)
+
+| Opción | Tipo | Campaña |
+|---|---|---|
+| `none` | `gold_special` (Clásica) | — |
+| `3x` | `gold_pro` | tag `3x_campaign` (3 cuotas al mismo precio) |
+| `6x` | `gold_pro` | — (6 cuotas, lo que Premium da por defecto) |
+
+- La comisión se consulta con la campaña (`listing_prices?...&tags=3x_campaign`):
+  incluye el cargo por financiar las cuotas, así que el precio mantiene la
+  ganancia.
+- 3 cuotas solo para cuentas y categorías habilitadas
+  (`/special_installments/3x_campaign/sellers/{id}` y
+  `.../categories/{cat}/enabled`). Si la categoría no la admite, al preparar
+  queda sin cuotas y se avisa.
+- La tag se activa con `PUT /items/{id}` mandando **todas** las tags (el PUT
+  reemplaza la lista).
+- `installments` cambia las cuotas de una publicada: tipo
+  (`POST /items/{id}/listing_type`), campaña y precio.
+
 ## Lo que se aprendió probando contra la API real (29/09/2026)
 
 - **La cuenta está en el modelo User Products:** pide `family_name` en vez de
