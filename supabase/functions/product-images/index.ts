@@ -72,6 +72,39 @@ const put = (key: string, body: Uint8Array, contentType: string) =>
 
 const del = (key: string) => r2.fetch(`${bucketUrl()}/${key}`, { method: "DELETE" });
 
+const MAX_BYTES = 8 * 1024 * 1024;
+
+// Fotos del catálogo de MercadoLibre. Se descargan una vez y quedan en R2: la
+// tienda nunca apunta a la URL de ML, así que si ML la borra no nos afecta.
+// Solo se aceptan URLs del CDN de ML, para que la función no sirva para
+// descargar cualquier cosa de internet.
+const esDeMeli = (url: string) => {
+  try {
+    const u = new URL(url);
+    return u.protocol === "https:" && (u.hostname === "mlstatic.com" || u.hostname.endsWith(".mlstatic.com"));
+  } catch {
+    return false;
+  }
+};
+
+// Las URLs del catálogo a veces vienen en http; el CDN responde igual en https.
+const aHttps = (url: string) => url.replace(/^http:\/\//, "https://");
+
+const descargar = async (url: string): Promise<Uint8Array | string> => {
+  let r: Response;
+  try {
+    r = await fetch(url, { signal: AbortSignal.timeout(15000) });
+  } catch {
+    return "MercadoLibre no respondió al descargar una foto";
+  }
+  if (!r.ok) return `MercadoLibre respondió ${r.status} al descargar una foto`;
+  if (!(r.headers.get("content-type") ?? "").startsWith("image/")) return "Una foto de MercadoLibre no es una imagen";
+
+  const bytes = new Uint8Array(await r.arrayBuffer());
+  if (bytes.length > MAX_BYTES) return "Una foto de MercadoLibre pesa más de 8 MB";
+  return bytes;
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "Método no permitido" }, 405);
@@ -104,7 +137,8 @@ Deno.serve(async (req) => {
   // orden: lista del estado final deseado.
   //   { tipo: "existente", indice: 2 }  -> la imagen que hoy está en 2.png
   //   { tipo: "nueva", archivo: 0 }     -> el archivo subido como file0
-  let orden: Array<{ tipo: string; indice?: number; archivo?: number }>;
+  //   { tipo: "url", url: "https://…" } -> una foto del catálogo de ML
+  let orden: Array<{ tipo: string; indice?: number; archivo?: number; url?: string }>;
   try {
     orden = JSON.parse(String(form.get("orden") ?? "[]"));
   } catch {
@@ -126,9 +160,20 @@ Deno.serve(async (req) => {
       continue;
     }
 
+    // Si una descarga falla se corta acá, antes de escribir nada: la galería
+    // queda como estaba y no hay fotos a medias.
+    if (item.tipo === "url") {
+      const url = aHttps(String(item.url ?? ""));
+      if (!esDeMeli(url)) return json({ error: "Solo se aceptan fotos de MercadoLibre" }, 400);
+      const bytes = await descargar(url);
+      if (typeof bytes === "string") return json({ error: bytes }, 502);
+      finales.push(bytes);
+      continue;
+    }
+
     const file = form.get(`file${item.archivo}`);
     if (!(file instanceof File)) return json({ error: `Falta el archivo ${item.archivo}` }, 400);
-    if (file.size > 8 * 1024 * 1024) return json({ error: `${file.name} pesa más de 8 MB` }, 413);
+    if (file.size > MAX_BYTES) return json({ error: `${file.name} pesa más de 8 MB` }, 413);
     if (!file.type.startsWith("image/")) return json({ error: `${file.name} no es una imagen` }, 415);
 
     finales.push(new Uint8Array(await file.arrayBuffer()));
