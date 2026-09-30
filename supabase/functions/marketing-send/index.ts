@@ -6,8 +6,8 @@
 //
 // Dos proveedores, cada uno en lo suyo:
 //
-//   - Unitpost manda el marketing. Su plan gratuito son 200 por día y 5000 por
-//     mes, y no los comparte con nada.
+//   - Unitpost manda el marketing. Su plan gratuito son 100 por día (anuncia
+//     200, pero pasados los 100 rebotan) y 5000 por mes, y no los comparte con nada.
 //   - Resend queda para lo transaccional de vigi-api (confirmaciones de
 //     compra). Lo que esos mails no usan de sus 100 diarios se aprovecha acá
 //     como desborde, dejando siempre una reserva para que una compra nunca se
@@ -34,10 +34,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 // Los dos aceptan hasta 100 mails por llamada al endpoint batch.
 const LOTE = 100;
 
-// Plan gratuito de Unitpost: 200 por día y 5000 por mes, con corte duro. Las
-// pruebas también descuentan y no dejan fila en marketing_sends: el colchón es
-// para ellas.
-const UNITPOST_DIARIO = 200;
+// Plan gratuito de Unitpost: 5000 por mes con corte duro. El plan anuncia 200
+// por día, pero en la práctica entrega 100 y el resto rebota o falla, así que
+// se toma 100. Las pruebas también descuentan y no dejan fila en
+// marketing_sends: el colchón es para ellas.
+const UNITPOST_DIARIO = 100;
 const UNITPOST_MENSUAL = 5000;
 const UNITPOST_COLCHON = 5;
 
@@ -46,7 +47,7 @@ const UNITPOST_COLCHON = 5;
 // que queda después de la reserva: si una campaña se come los 100, las
 // confirmaciones de compra del día no salen.
 const RESEND_DIARIO = 100;
-const RESEND_RESERVA = 40;
+const RESEND_RESERVA = 30;
 
 type Proveedor = "unitpost" | "resend";
 
