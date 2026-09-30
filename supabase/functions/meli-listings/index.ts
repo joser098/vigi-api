@@ -278,6 +278,8 @@ type Listing = {
   catalog_item_id: string | null;
   catalog_price: number | null;
   installments: Cuotas | null;
+  // Fotos propias de MercadoLibre (migración 0020), por id: [{ id }].
+  pictures: Array<{ id: string }> | null;
 };
 
 // Cuotas sin interés (migración 0019). En Argentina salen del tipo de
@@ -366,6 +368,11 @@ const carpetaFotos = (m: string) => encodeURIComponent(m.replace(/ /g, "+"));
 
 // MercadoLibre las descarga y las copia a sus servidores: no quedan enlazadas
 // a las nuestras.
+// Las fotos que se mandan a MercadoLibre: las elegidas del catálogo si hay,
+// si no, la galería del producto.
+const fotosDe = (p: Producto, l?: { pictures?: Array<{ id: string }> | null } | null) =>
+  l?.pictures?.length ? l.pictures.slice(0, 10).map((x) => ({ id: x.id })) : fotos(p);
+
 const fotos = (p: Producto) => {
   const n = Math.min(Math.max(p.gallery ?? 0, 0), 10);
   const urls = Array.from({ length: n }, (_, i) => `${ASSETS}/gallery/${carpetaFotos(p.model)}/${i}.png`);
@@ -491,7 +498,7 @@ const armarItem = async (
     // Solo MercadoLibre: sin Mercado Shops, que sería otra tienda aparte de
     // vigi.com.ar.
     channels: ["marketplace"],
-    pictures: fotos(p),
+    pictures: fotosDe(p, l),
     attributes: await armarAtributos(p, l, s),
     sale_terms: [
       { id: "WARRANTY_TYPE", value_name: "Garantía de fábrica" },
@@ -542,6 +549,7 @@ type Candidato = {
   gtin: string | null;
   thumbnail: string | null;
   exacto: boolean;
+  pictures: Array<{ id: string; url: string }>;
 };
 
 // Solo letras y números: "DS-2CE76K0T" y "DS2CE76K0T" son el mismo modelo.
@@ -567,6 +575,12 @@ const buscarEnCatalogo = async (token: string, p: Producto): Promise<Candidato[]
       model,
       gtin: valorAttr(x.attributes, "GTIN"),
       thumbnail: x.pictures?.[0]?.url ?? null,
+      // Las fotos de la ficha, por id: se pueden usar en la publicación sin
+      // que MercadoLibre tenga que descargar nada.
+      pictures: (x.pictures ?? [])
+        .filter((f: any) => f?.id)
+        .slice(0, 10)
+        .map((f: any) => ({ id: String(f.id), url: String(f.url ?? f.secure_url ?? "") })),
       exacto: Boolean(model && modeloNorm(model) === buscado),
     };
   });
@@ -1031,7 +1045,8 @@ Deno.serve(async (req) => {
 
         // La foto principal, antes que nada: con una chica MercadoLibre la manda
         // a revisión sin explicar por qué.
-        const principal = fotos(p)[0]?.source;
+        // Las del catálogo de MercadoLibre ya cumplen: se controla solo la galería.
+        const principal = l.pictures?.length ? null : fotos(p)[0]?.source;
         const medidas = principal ? await medidasPng(principal) : null;
         if (medidas && Math.min(...medidas) < MIN_FOTO_PX) {
           return {
@@ -1094,7 +1109,7 @@ Deno.serve(async (req) => {
         // las descarga (pasó en todas las primeras publicaciones) y pausa la
         // publicación por falta de foto; el segundo envío entra siempre.
         const avisos: string[] = [];
-        const f = await meli(token, `/items/${r.data.id}`, { method: "PUT", body: { pictures: fotos(p) } });
+        const f = await meli(token, `/items/${r.data.id}`, { method: "PUT", body: { pictures: fotosDe(p, l) } });
         if (!f.ok) avisos.push(`no se pudieron reenviar las fotos: ${errorMeli(f)}`);
 
         // La campaña de 3 cuotas se activa con una tag, sobre el item ya creado.
@@ -1218,7 +1233,7 @@ Deno.serve(async (req) => {
         if (body.pictures) {
           const p = productos.get(id);
           if (!p) return { ok: false, message: "No existe el producto" };
-          cambios.pictures = fotos(p);
+          cambios.pictures = fotosDe(p, l);
         }
         if (["active", "paused", "closed"].includes(body.status)) cambios.status = body.status;
         if (Number.isInteger(body.quantity) && body.quantity >= 0) {

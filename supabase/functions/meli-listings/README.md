@@ -78,6 +78,15 @@ compite por el botón de compra de la ficha.
 - `installments` cambia las cuotas de una publicada: tipo
   (`POST /items/{id}/listing_type`), campaña y precio.
 
+## Fotos del catálogo (migración 0020)
+
+`meli_listings.pictures` guarda fotos elegidas de una ficha del catálogo de
+MercadoLibre, por id (`[{ "id": "…" }]`). Si hay, la publicación usa esas en
+vez de la galería del producto; la galería y la tienda no cambian. Sirve para
+productos con fotos de menos de 500 × 500, que MercadoLibre manda a revisión.
+Los candidatos de `catalog` traen sus fotos; `update` con `pictures: true`
+las aplica a una publicación ya creada.
+
 ## Lo que se aprendió probando contra la API real (29/09/2026)
 
 - **La cuenta está en el modelo User Products:** pide `family_name` en vez de
