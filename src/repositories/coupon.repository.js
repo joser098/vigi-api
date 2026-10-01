@@ -4,7 +4,7 @@ const { updated } = require("../db/result");
 const CAMPOS = `
   id, code, description, kind, value, max_discount, min_purchase,
   max_redemptions, max_per_customer, redemptions,
-  starts_at, ends_at, is_active
+  starts_at, ends_at, is_active, customer_id
 `;
 
 // `code` es citext, así que la comparación ya es insensible a mayúsculas. Lo

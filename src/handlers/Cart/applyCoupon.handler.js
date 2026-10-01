@@ -38,7 +38,11 @@ const applyCoupon = async (req, res) => {
       ? await couponRepository.countRedemptionsByCustomer(coupon.id, customer_id)
       : 0;
 
-    const resultado = evaluateCoupon(coupon, { subtotal, customerRedemptions });
+    const resultado = evaluateCoupon(coupon, {
+      subtotal,
+      customerRedemptions,
+      customerId: customer_id,
+    });
 
     if (!resultado.valid) {
       // 200 y no 4xx: un cupón vencido no es un error del cliente ni de la

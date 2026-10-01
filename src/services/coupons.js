@@ -54,13 +54,20 @@ const calculateDiscount = (coupon, subtotal) => {
  * @param coupon              fila de `coupons`, o null si el código no existe
  * @param subtotal            total de productos, sin envío
  * @param customerRedemptions cuántas veces lo usó ya este cliente
+ * @param customerId          quién lo quiere usar, para los cupones personales
  * @param now                 inyectable para los tests
  */
 const evaluateCoupon = (
   coupon,
-  { subtotal, customerRedemptions = 0, now = new Date() } = {}
+  { subtotal, customerRedemptions = 0, customerId = null, now = new Date() } = {}
 ) => {
   if (!coupon) return rechazo("not_found");
+
+  // Un cupón personal (los del recupero de carritos) es de un solo cliente. Para
+  // cualquier otro se comporta como si no existiera: decir "este cupón es de
+  // otra persona" confirmaría que el código es válido.
+  if (coupon.customer_id && coupon.customer_id !== customerId)
+    return rechazo("not_found");
   if (!coupon.is_active) return rechazo("inactive");
 
   if (coupon.starts_at && new Date(coupon.starts_at) > now)

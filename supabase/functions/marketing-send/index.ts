@@ -4,14 +4,8 @@
 // API keys no pueden estar en el bundle del panel. El panel arma la campaña y
 // aprieta el botón; acá se decide a quién se le manda y se manda.
 //
-// Dos proveedores, cada uno en lo suyo:
-//
-//   - Unitpost manda el marketing. Su plan gratuito son 100 por día (anuncia
-//     200, pero pasados los 100 rebotan) y 5000 por mes, y no los comparte con nada.
-//   - Resend queda para lo transaccional de vigi-api (confirmaciones de
-//     compra). Lo que esos mails no usan de sus 100 diarios se aprovecha acá
-//     como desborde, dejando siempre una reserva para que una compra nunca se
-//     quede sin su mail.
+// Dos proveedores, cada uno en lo suyo: ver el bloque "Proveedores y cuota"
+// más abajo, que comparte la cuota con `cart-recovery`.
 //
 // Sin UNITPOST_API_KEY todo sale por Resend, como antes.
 //
@@ -29,27 +23,177 @@
 // `remitente()` más abajo. CLIENT_URL es el sitio público, para armar
 // el link de baja.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+
+// --- Proveedores y cuota -----------------------------------------------------
+// Este bloque está IGUAL en marketing-send y en cart-recovery: si se cambia en
+// una, se cambia en la otra. Va copiado en cada function (y no en un archivo
+// compartido) para que se pueda desplegar pegando el archivo en el dashboard.
+// Lo que comparten las functions que mandan mails de marketing:
+// `marketing-send` (campañas) y `cart-recovery` (carritos abandonados).
+//
+// Las dos salen por los mismos proveedores y con la misma cuota diaria. Si
+// cada una llevara sus propios números, entre las dos se pasarían del plan
+// gratuito y se llevarían puestos los mails de confirmación de compra de
+// vigi-api, que usan la misma API key de Resend.
+//
+//   - Unitpost manda el marketing. Su plan gratuito son 100 por día (anuncia
+//     200, pero pasados los 100 rebotan) y 5000 por mes, y no los comparte con nada.
+//   - Resend queda para lo transaccional de vigi-api (confirmaciones de
+//     compra). Lo que esos mails no usan de sus 100 diarios se aprovecha acá
+//     como desborde, dejando siempre una reserva para que una compra nunca se
+//     quede sin su mail.
+
+
+type Proveedor = "unitpost" | "resend";
 
 // Los dos aceptan hasta 100 mails por llamada al endpoint batch.
 const LOTE = 100;
 
 // Plan gratuito de Unitpost: 5000 por mes con corte duro. El plan anuncia 200
 // por día, pero en la práctica entrega 100 y el resto rebota o falla, así que
-// se toma 100. Las pruebas también descuentan y no dejan fila en
-// marketing_sends: el colchón es para ellas.
+// se toma 100. Las pruebas también descuentan y no dejan fila en la base: el
+// colchón es para ellas.
 const UNITPOST_DIARIO = 100;
 const UNITPOST_MENSUAL = 5000;
 const UNITPOST_COLCHON = 5;
 
 // Plan gratuito de Resend: 100 por día, compartidos con los transaccionales de
-// vigi-api, que salen con la misma API key. Las campañas usan como mucho lo
-// que queda después de la reserva: si una campaña se come los 100, las
+// vigi-api, que salen con la misma API key. El marketing usa como mucho lo que
+// queda después de la reserva: si una campaña se come los 100, las
 // confirmaciones de compra del día no salen.
 const RESEND_DIARIO = 100;
 const RESEND_RESERVA = 30;
 
-type Proveedor = "unitpost" | "resend";
+/**
+ * El remitente, con nombre para mostrar.
+ *
+ * Sin nombre, la bandeja de entrada muestra la parte de antes del arroba: un
+ * mail de "marketing@notification.vigi.com.ar" llega firmado por
+ * **marketing**, que no le dice nada a nadie. Con nombre llega como **Vigi**.
+ *
+ * El nombre sale de quien llama (la campaña, por ejemplo). Si no trae, se usa
+ * el que ya venga en el secreto, y si tampoco, "Vigi". Va entre comillas
+ * porque un nombre con coma o con punto sin comillas rompe la cabecera.
+ */
+const remitente = (bruto: string, nombre: string | null) => {
+  const conAngulos = bruto.match(/^\s*(.*?)\s*<([^>]+)>\s*$/);
+
+  const direccion = (conAngulos ? conAngulos[2] : bruto).trim();
+  const delSecreto = conAngulos ? conAngulos[1].replace(/^"|"$/g, "").trim() : "";
+  const final = (nombre ?? "").trim() || delSecreto || "Vigi";
+
+  return `${JSON.stringify(final)} <${direccion}>`;
+};
+
+/**
+ * Manda un lote por un proveedor y devuelve un id por mail.
+ *
+ * Resend devuelve un id por mail. Unitpost devuelve uno solo para todo el
+ * lote: se repite en cada fila, alcanza para buscarlo en su panel.
+ */
+const enviarLote = async (
+  proveedor: Proveedor,
+  apiKey: string,
+  from: string,
+  mails: Array<{ email: string; subject: string; html: string }>
+): Promise<Array<string | null>> => {
+  const cuerpo = mails.map((m) => ({
+    from,
+    to: proveedor === "resend" ? [m.email] : m.email,
+    subject: m.subject,
+    html: m.html,
+  }));
+
+  const url =
+    proveedor === "unitpost"
+      ? "https://www.unitpost.com/api/v1/email/batch"
+      : "https://api.resend.com/emails/batch";
+
+  const r = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(proveedor === "unitpost" ? { emails: cuerpo } : cuerpo),
+  });
+
+  const payload = await r.json().catch(() => null);
+  if (!r.ok) {
+    const detalle = payload?.error?.message ?? payload?.message ?? payload?.error;
+    throw new Error(
+      typeof detalle === "string"
+        ? detalle
+        : `${proveedor === "unitpost" ? "Unitpost" : "Resend"} respondió ${r.status}`
+    );
+  }
+
+  if (proveedor === "unitpost") {
+    const id = payload?.data?.id ?? null;
+    return mails.map(() => id);
+  }
+
+  const ids = (payload?.data ?? []) as Array<{ id: string }>;
+  return mails.map((_, n) => ids[n]?.id ?? null);
+};
+
+/**
+ * Cuántos mails de marketing salieron por un proveedor desde `desde`.
+ *
+ * Lee `email_quota_sends`, que junta campañas y recupero de carritos. No
+ * incluye ni las pruebas ni los transaccionales de la API: para eso están el
+ * colchón de Unitpost y la reserva de Resend.
+ */
+const enviadosDesde = async (db: SupabaseClient, proveedor: Proveedor, desde: Date) => {
+  const { count, error } = await db
+    .from("email_quota_sends")
+    .select("provider", { count: "exact", head: true })
+    .eq("provider", proveedor)
+    .gte("created_at", desde.toISOString());
+
+  // Sin poder contar no se sabe cuánto queda: mejor no mandar que pasarse.
+  if (error) throw new Error(`No se pudo leer la cuota: ${error.message}`);
+
+  return count ?? 0;
+};
+
+/**
+ * Lo que le queda hoy a cada proveedor.
+ *
+ * Los días y los meses se cuentan en UTC, que es cuando los proveedores
+ * reinician la cuenta. Un proveedor sin API key tiene cero.
+ */
+const cupoGlobal = async (db: SupabaseClient, claves: Record<Proveedor, string>) => {
+  const medianoche = new Date();
+  medianoche.setUTCHours(0, 0, 0, 0);
+  const inicioMes = new Date(Date.UTC(medianoche.getUTCFullYear(), medianoche.getUTCMonth(), 1));
+
+  const [uniHoy, uniMes, resHoy] = await Promise.all([
+    enviadosDesde(db, "unitpost", medianoche),
+    enviadosDesde(db, "unitpost", inicioMes),
+    enviadosDesde(db, "resend", medianoche),
+  ]);
+
+  const unitpost = claves.unitpost
+    ? Math.max(
+        0,
+        Math.min(UNITPOST_DIARIO - UNITPOST_COLCHON - uniHoy, UNITPOST_MENSUAL - UNITPOST_COLCHON - uniMes)
+      )
+    : 0;
+  const resend = claves.resend ? Math.max(0, RESEND_DIARIO - RESEND_RESERVA - resHoy) : 0;
+
+  return {
+    hoy: uniHoy + resHoy,
+    disponible: { unitpost, resend } as Record<Proveedor, number>,
+    detalle: {
+      unitpost: { hoy: uniHoy, mes: uniMes, limite_dia: UNITPOST_DIARIO, limite_mes: UNITPOST_MENSUAL },
+      resend: { hoy: resHoy, limite_dia: RESEND_DIARIO - RESEND_RESERVA },
+    },
+  };
+};
+// --- fin del bloque compartido ---------------------------------------------
+
 
 // Cuántos manda una tanda si el panel no pide otra cosa: todo lo que entre hoy.
 const TANDA_POR_DEFECTO = UNITPOST_DIARIO - UNITPOST_COLCHON + RESEND_DIARIO - RESEND_RESERVA;
@@ -103,27 +247,6 @@ const traerTodo = async <T>(
 
     if (pagina.length < PAGINA) return filas;
   }
-};
-
-/**
- * El remitente, con nombre para mostrar.
- *
- * Sin nombre, la bandeja de entrada muestra la parte de antes del arroba: un
- * mail de "marketing@notification.vigi.com.ar" llega firmado por
- * **marketing**, que no le dice nada a nadie. Con nombre llega como **Vigi**.
- *
- * El nombre sale de la campaña (`from_name`). Si la campaña no trae, se usa el
- * que ya venga en MARKETING_FROM, y si tampoco, "Vigi". Va entre comillas
- * porque un nombre con coma o con punto sin comillas rompe la cabecera.
- */
-const remitente = (bruto: string, nombreCampana: string | null) => {
-  const conAngulos = bruto.match(/^\s*(.*?)\s*<([^>]+)>\s*$/);
-
-  const direccion = (conAngulos ? conAngulos[2] : bruto).trim();
-  const delSecreto = conAngulos ? conAngulos[1].replace(/^"|"$/g, "").trim() : "";
-  const nombre = (nombreCampana ?? "").trim() || delSecreto || "Vigi";
-
-  return `${JSON.stringify(nombre)} <${direccion}>`;
 };
 
 /**
@@ -211,105 +334,16 @@ Deno.serve(async (req) => {
     resend: remitente(fromResend, campana.from_name),
   };
 
-  /**
-   * Manda un lote por un proveedor y devuelve un id por mail.
-   *
-   * Resend devuelve un id por mail. Unitpost devuelve uno solo para todo el
-   * lote: se repite en cada fila, alcanza para buscarlo en su panel.
-   */
-  const enviar = async (
-    proveedor: Proveedor,
-    destinatarios: Array<{ email: string; html: string }>
-  ): Promise<Array<string | null>> => {
-    const mails = destinatarios.map((d) => ({
-      from: de[proveedor],
-      to: proveedor === "resend" ? [d.email] : d.email,
-      subject: campana.subject,
-      html: d.html,
-    }));
+  const enviar = (proveedor: Proveedor, destinatarios: Array<{ email: string; html: string }>) =>
+    enviarLote(
+      proveedor,
+      claves[proveedor],
+      de[proveedor],
+      destinatarios.map((d) => ({ email: d.email, subject: campana.subject, html: d.html }))
+    );
 
-    const url =
-      proveedor === "unitpost"
-        ? "https://www.unitpost.com/api/v1/email/batch"
-        : "https://api.resend.com/emails/batch";
-
-    const r = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${claves[proveedor]}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(proveedor === "unitpost" ? { emails: mails } : mails),
-    });
-
-    const payload = await r.json().catch(() => null);
-    if (!r.ok) {
-      const detalle = payload?.error?.message ?? payload?.message ?? payload?.error;
-      throw new Error(
-        typeof detalle === "string" ? detalle : `${proveedor === "unitpost" ? "Unitpost" : "Resend"} respondió ${r.status}`
-      );
-    }
-
-    if (proveedor === "unitpost") {
-      const id = payload?.data?.id ?? null;
-      return destinatarios.map(() => id);
-    }
-
-    const ids = (payload?.data ?? []) as Array<{ id: string }>;
-    return destinatarios.map((_, n) => ids[n]?.id ?? null);
-  };
-
-  /**
-   * Cuántos mails de campaña salieron por un proveedor desde `desde`.
-   *
-   * No incluye ni las pruebas ni los transaccionales de la API: para eso están
-   * el colchón de Unitpost y la reserva de Resend.
-   */
-  const enviadosDesde = async (proveedor: Proveedor, desde: Date) => {
-    const { count } = await admin_db
-      .from("marketing_sends")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "sent")
-      .eq("provider", proveedor)
-      .gte("created_at", desde.toISOString());
-
-    return count ?? 0;
-  };
-
-  /**
-   * Lo que le queda hoy a cada proveedor.
-   *
-   * Los días y los meses se cuentan en UTC, que es cuando los proveedores
-   * reinician la cuenta. Un proveedor sin API key tiene cero.
-   */
-  const cupo = async () => {
-    const medianoche = new Date();
-    medianoche.setUTCHours(0, 0, 0, 0);
-    const inicioMes = new Date(Date.UTC(medianoche.getUTCFullYear(), medianoche.getUTCMonth(), 1));
-
-    const [uniHoy, uniMes, resHoy] = await Promise.all([
-      enviadosDesde("unitpost", medianoche),
-      enviadosDesde("unitpost", inicioMes),
-      enviadosDesde("resend", medianoche),
-    ]);
-
-    const unitpost = claves.unitpost
-      ? Math.max(
-          0,
-          Math.min(UNITPOST_DIARIO - UNITPOST_COLCHON - uniHoy, UNITPOST_MENSUAL - UNITPOST_COLCHON - uniMes)
-        )
-      : 0;
-    const resend = claves.resend ? Math.max(0, RESEND_DIARIO - RESEND_RESERVA - resHoy) : 0;
-
-    return {
-      hoy: uniHoy + resHoy,
-      disponible: { unitpost, resend } as Record<Proveedor, number>,
-      detalle: {
-        unitpost: { hoy: uniHoy, mes: uniMes, limite_dia: UNITPOST_DIARIO, limite_mes: UNITPOST_MENSUAL },
-        resend: { hoy: resHoy, limite_dia: RESEND_DIARIO - RESEND_RESERVA },
-      },
-    };
-  };
+  // La cuota se cuenta junto con los mails de recupero de carritos.
+  const cupo = () => cupoGlobal(admin_db, claves);
 
   // --- Prueba -------------------------------------------------------------
   // Una sola dirección, no toca la lista ni marca la campaña como enviada. Es
@@ -406,7 +440,14 @@ Deno.serve(async (req) => {
   }
 
   // --- Cuánto entra hoy ---------------------------------------------------
-  const { hoy, disponible, detalle } = await cupo();
+  let cuota: Awaited<ReturnType<typeof cupo>>;
+  try {
+    cuota = await cupo();
+  } catch (e) {
+    return json({ error: e instanceof Error ? e.message : String(e) }, 500);
+  }
+
+  const { hoy, disponible, detalle } = cuota;
   const disponibleHoy = disponible.unitpost + disponible.resend;
 
   if (disponibleHoy === 0) {

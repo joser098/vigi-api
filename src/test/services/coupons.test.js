@@ -100,6 +100,31 @@ describe("evaluateCoupon", () => {
       reason: "empty_cart",
     });
   });
+
+  it("un cupón personal solo lo puede usar su dueño", () => {
+    const personal = cupon({ customer_id: "cliente-a" });
+
+    expect(
+      evaluateCoupon(personal, { subtotal: 100000, customerId: "cliente-a" })
+    ).toMatchObject({ valid: true, discount: 10000 });
+
+    // Para cualquier otro, como si no existiera.
+    expect(
+      evaluateCoupon(personal, { subtotal: 100000, customerId: "cliente-b" })
+    ).toMatchObject({ valid: false, reason: "not_found" });
+    expect(evaluateCoupon(personal, { subtotal: 100000 })).toMatchObject({
+      valid: false,
+      reason: "not_found",
+    });
+  });
+
+  it("un cupón público lo usa cualquiera", () => {
+    const r = evaluateCoupon(cupon({ customer_id: null }), {
+      subtotal: 100000,
+      customerId: "cliente-b",
+    });
+    expect(r.valid).toBe(true);
+  });
 });
 
 describe("calculateDiscount", () => {

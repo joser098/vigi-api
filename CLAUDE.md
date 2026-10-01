@@ -147,6 +147,10 @@ Dos reglas, una sola idea: **nada que baje el precio llega en el request.**
 - El descuento se reparte entre los ítems (`applyDiscountToItems`) porque
   Mercado Pago arma el total sumando la preferencia y no acepta importes
   negativos.
+- Un cupón con `customer_id` es **personal**: para cualquier otro cliente
+  `evaluateCoupon` responde `not_found`. Los genera el recupero de carritos
+  (`supabase/functions/cart-recovery`, migración 0021) con `origin =
+  'cart_recovery'`; el panel no puede crearlos.
 - El canje se registra cuando **se crea la orden** (o sea, con el pago
   aprobado), no cuando el cliente escribe el código. Como el webhook llega
   después y solo trae ítems ya descontados, el checkout deja el monto anotado

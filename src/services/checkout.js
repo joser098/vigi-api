@@ -63,6 +63,7 @@ const buildTotals = async ({ cart, customer_id, address }) => {
     const resultado = evaluateCoupon(cart.coupon, {
       subtotal: itemsTotal,
       customerRedemptions,
+      customerId: customer_id,
     });
 
     if (resultado.valid) {
