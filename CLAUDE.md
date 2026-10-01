@@ -199,6 +199,19 @@ es:
    cámara de $400.000 viaja asegurada por $30.000. Asegurar bien cuesta poco
    ($26.725 → $29.387 para $250.000 declarados a Córdoba).
 
+### Mails de estado del pedido
+
+Los manda `supabase/functions/order-notifications` (ver su README), no la
+API. El panel cambia el estado con un modal de confirmación ("¿Pasar a En
+camino? [x] Mandarle un mail al cliente") y la function cambia el estado y
+manda el mail en el momento, para `enviado` ("En camino"), `entregado`,
+`cancelado` y `reembolsado`. Queda registrado en `order_notifications`
+(migración 0025). El seguimiento (`carrier`, `tracking_number`,
+`tracking_url`) se carga desde el panel y va en el mail de "En camino" y en
+"Mis pedidos".
+
+El código del estado sigue siendo `enviado`; solo cambió la etiqueta.
+
 ### Pagos
 
 #### Registrar un pago de Mercado Pago: tres puertas, una sola función

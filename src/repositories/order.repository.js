@@ -14,6 +14,10 @@ const ORDER_FIELDS = `
   o.coupon_code,
   o.status,
   o.ip_address,
+  -- Seguimiento del envío (migración 0024): "Mis pedidos" lo muestra.
+  o.carrier,
+  o.tracking_number,
+  o.tracking_url,
   o.created_at as date,
   s.label as status_label,
   s.sort_order as status_order,
