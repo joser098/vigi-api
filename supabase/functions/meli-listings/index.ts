@@ -14,6 +14,7 @@
 //   sync       trae estado, precio y ventas de las publicadas
 //   attributes atributos que pide una categoría, para completarlos a mano
 //   catalog    busca el producto en el catálogo de ML (para sacar el GTIN)
+//   dimensions sugiere peso y medidas de envío desde ML (no guarda nada)
 //   diagnose   valida un producto en variantes, para ver qué rechaza ML
 //   catalog_*  publicación de catálogo: check, optin y precio (ver más abajo)
 //   installments  cambia las cuotas sin interés (y el tipo y el precio)
@@ -595,6 +596,74 @@ const gtinDeCatalogo = (cands: Candidato[]) => {
 };
 
 // ---------------------------------------------------------------------------
+// Medidas de envío (acción `dimensions`)
+//
+// Solo sugiere: el panel muestra el resultado y lo guarda una persona. No hay
+// garantía de que MercadoLibre tenga el dato, y cuando lo tiene puede ser del
+// producto suelto y no de la caja, así que se dice cuál de los dos es.
+// ---------------------------------------------------------------------------
+
+type Medidas = {
+  weight_grams: number | null;
+  height_cm: number | null;
+  width_cm: number | null;
+  length_cm: number | null;
+  // true = bulto con caja (lo que cobra el correo). false = producto suelto.
+  package: boolean;
+};
+
+const A_CM: Record<string, number> = { mm: 0.1, cm: 1, m: 100, in: 2.54, '"': 2.54 };
+const A_G: Record<string, number> = { mg: 0.001, g: 1, kg: 1000, lb: 453.592, oz: 28.3495 };
+
+/** "15 cm", "1,2 kg", o el value_struct {number, unit} que manda a veces. */
+const medida = (attrs: any[], id: string, tabla: Record<string, number>): number | null => {
+  const a = (attrs ?? []).find((x: any) => x?.id === id);
+  if (!a) return null;
+  const st = a.value_struct ?? a.values?.[0]?.struct;
+  let n: number | null = st?.number ?? null;
+  let u: string = String(st?.unit ?? "").toLowerCase();
+  if (n == null) {
+    const m = String(a.value_name ?? a.values?.[0]?.name ?? "")
+      .replace(",", ".")
+      .match(/([\d.]+)\s*([a-z"]+)/i);
+    if (!m) return null;
+    n = Number(m[1]);
+    u = m[2].toLowerCase();
+  }
+  const f = tabla[u];
+  if (!f || !Number.isFinite(n) || n <= 0) return null;
+  // Enteros y nunca cero: es lo que aceptan los correos.
+  return Math.max(1, Math.ceil(n * f));
+};
+
+const medidasDeAtributos = (attrs: any[]): Medidas | null => {
+  // Primero las del paquete; si no hay, las del producto, avisando.
+  for (const [prefijo, esPaquete] of [
+    ["SELLER_PACKAGE_", true],
+    ["PACKAGE_", true],
+    ["", false],
+  ] as const) {
+    const m: Medidas = {
+      weight_grams: medida(attrs, `${prefijo}WEIGHT`, A_G),
+      height_cm: medida(attrs, `${prefijo}HEIGHT`, A_CM),
+      width_cm: medida(attrs, `${prefijo}WIDTH`, A_CM),
+      length_cm: medida(attrs, `${prefijo}LENGTH`, A_CM),
+      package: esPaquete,
+    };
+    if (m.weight_grams || m.height_cm || m.width_cm || m.length_cm) return m;
+  }
+  return null;
+};
+
+/** `shipping.dimensions` de una publicación: "20x25x35,3500" (cm y gramos). */
+const medidasDeEnvio = (dims: unknown): Medidas | null => {
+  const m = String(dims ?? "").match(/^(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?),(\d+(?:\.\d+)?)$/);
+  if (!m) return null;
+  const [h, w, l, g] = m.slice(1).map((x) => Math.max(1, Math.ceil(Number(x))));
+  return { height_cm: h, width_cm: w, length_cm: l, weight_grams: g, package: true };
+};
+
+// ---------------------------------------------------------------------------
 // 3 cuotas sin interés: no todas las cuentas ni categorías la tienen
 // ---------------------------------------------------------------------------
 
@@ -966,6 +1035,45 @@ Deno.serve(async (req) => {
       const p = productos.get(ids[0]);
       if (!p) return json({ error: "No existe el producto" }, 404);
       return json({ candidates: await buscarEnCatalogo(token, p) });
+    }
+
+    // --- Medidas de envío ----------------------------------------------------
+    // Busca peso y medidas en, por orden: la publicación propia, la ficha de
+    // catálogo elegida, o las fichas del catálogo con el mismo modelo. No
+    // guarda nada: lo confirma una persona en el detalle del producto.
+    if (accion === "dimensions") {
+      const productos = await traerProductos();
+      const p = productos.get(ids[0]);
+      if (!p) return json({ error: "No existe el producto" }, 404);
+      const l = (await traerListings([p.id])).get(p.id);
+
+      if (l?.meli_item_id) {
+        const r = await meli<any>(token, `/items/${l.meli_item_id}?attributes=attributes,shipping,permalink`);
+        if (r.ok) {
+          const m = medidasDeEnvio(r.data?.shipping?.dimensions) ?? medidasDeAtributos(r.data?.attributes);
+          if (m) return json({ found: true, ...m, origin: "Tu publicación en MercadoLibre", url: r.data?.permalink ?? null });
+        }
+      }
+
+      const fichas = l?.catalog_product_id
+        ? [l.catalog_product_id]
+        : (await buscarEnCatalogo(token, p)).filter((c) => c.exacto).map((c) => c.id).slice(0, 3);
+
+      for (const id of fichas) {
+        const r = await meli<any>(token, `/products/${id}`);
+        if (!r.ok) continue;
+        const m = medidasDeAtributos(r.data?.attributes);
+        if (m) {
+          return json({
+            found: true,
+            ...m,
+            origin: `Catálogo de MercadoLibre: ${r.data?.name ?? id}`,
+            url: r.data?.permalink ?? null,
+          });
+        }
+      }
+
+      return json({ found: false, searched: fichas.length + (l?.meli_item_id ? 1 : 0) });
     }
 
     // --- Diagnóstico ---------------------------------------------------------

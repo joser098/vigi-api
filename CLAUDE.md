@@ -184,9 +184,12 @@ Subir `FREE_SHIPPING_MIN_PURCHASE` no lo arregla: a $450.000 el bulto estándar
 deja 8,6% neto, pero un kit de 10 kg al norte sigue perdiendo. El arreglo real
 es:
 
-1. Guardar `weight_grams`, `height_cm`, `width_cm`, `length_cm` en `products`
-   (el importador los tiene que traer de la lista del proveedor, o se cargan a
-   mano por categoría como primera aproximación).
+1. ~~Guardar `weight_grams`, `height_cm`, `width_cm`, `length_cm` en
+   `products`~~ — hecho en la migración 0023, junto con `shipping_profiles`
+   (perfil de caja por categoría, `categories.shipping_profile_id`). Se cargan
+   desde vigi-admin (`/envios` y el detalle de producto). Bulto de un producto
+   = sus columnas propias si no son NULL (van las cuatro o ninguna); si no, el
+   perfil de su categoría. **Ninguna cotización lo lee todavía.**
 2. Armar el bulto desde los ítems del carrito en vez de la constante
    `BULTO_ESTANDAR`.
 3. Pasar `valorDeclarado` = total del carrito. Hoy está fijo en $30.000: una

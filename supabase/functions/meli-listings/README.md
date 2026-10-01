@@ -38,7 +38,13 @@ precio no cambia (2 o 3 consultas).
 ## Acciones
 
 `status`, `connect`, `attributes`, `prepare`, `quote`, `validate`, `publish`,
-`update`, `reprice`, `sync`. Ver el comentario al principio de `index.ts`.
+`update`, `reprice`, `sync`, `dimensions`. Ver el comentario al principio de
+`index.ts`.
+
+`dimensions` es la única que sirve a la tienda y no a las publicaciones: busca
+peso y medidas del bulto para el detalle del producto (migración 0023). Solo
+lee y devuelve una sugerencia; el panel la guarda en `products` con el permiso
+del admin, así que la función sigue sin escribir en `products`.
 
 Publicar siempre valida antes con `POST /items/validate`: si MercadoLibre la
 rechaza, no se crea nada y los errores quedan en `meli_listings.errors`.
