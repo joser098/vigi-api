@@ -402,6 +402,18 @@ Deno.serve(async (req) => {
         .order("created_at", { ascending: true })
         .range(desde, hasta)
     );
+
+    // Campaña para un segmento (migración 0022): de los suscriptos, solo los
+    // clientes que hoy están en ese segmento. El segmento se recalcula en cada
+    // tanda, así que alguien que compra entre una tanda y otra puede salir de
+    // "sin compra" y no recibirla, que es lo que corresponde.
+    if (campana.segment) {
+      const enSegmento = await traerTodo<{ email: string }>((desde, hasta) =>
+        admin_db.rpc("marketing_segment_emails", { p_segment: campana.segment }).range(desde, hasta)
+      );
+      const emails = new Set(enSegmento.map((e) => String(e.email).toLowerCase()));
+      contactos = contactos.filter((c) => emails.has(c.email.toLowerCase()));
+    }
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);
   }

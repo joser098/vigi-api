@@ -333,9 +333,12 @@ const filaItem = (it: Item, sitio: string, paso: number) => {
   const foto = it.thumbnail
     ? `<img src="${esc(it.thumbnail)}" width="72" height="72" alt="" style="display:block;width:72px;height:72px;object-fit:contain;border-radius:10px;background:${C.panel}">`
     : `<div style="width:72px;height:72px;border-radius:10px;background:${C.panel}"></div>`;
-  const antes = it.price_original
-    ? `<span style="font-size:12px;color:${C.suave};text-decoration:line-through;margin-right:6px">${plata(it.price_original)}</span>`
-    : "";
+  // Sin precio tachado: el mail muestra solo lo que se paga hoy. Un tachado al
+  // lado de cada producto se lee como un descuento del mail, y en los pasos 1
+  // y 2 no hay ninguno. El único descuento que muestra este mail es el cupón
+  // del paso 3, y va aparte, abajo del total.
+  const cantidad =
+    it.quantity > 1 ? `${it.quantity} × ${plata(it.unit_price)}` : `Cantidad: 1`;
 
   return `
 <tr>
@@ -344,15 +347,23 @@ const filaItem = (it: Item, sitio: string, paso: number) => {
   </td>
   <td style="padding:12px 0;border-bottom:1px solid ${C.linea};font-family:${FUENTE}">
     <a href="${esc(url)}" style="font-size:14px;font-weight:600;color:${C.tinta};text-decoration:none;line-height:1.4">${esc(it.title)}</a>
-    <div style="margin-top:4px;font-size:12px;color:${C.suave}">Cantidad: ${it.quantity}</div>
+    <div style="margin-top:4px;font-size:12px;color:${C.suave}">${cantidad}</div>
   </td>
   <td align="right" style="padding:12px 0;border-bottom:1px solid ${C.linea};font-family:${FUENTE};white-space:nowrap">
-    ${antes}<span style="font-size:15px;font-weight:700;color:${C.tinta}">${plata(it.unit_price * it.quantity)}</span>
+    <span style="font-size:15px;font-weight:700;color:${C.tinta}">${plata(it.unit_price * it.quantity)}</span>
   </td>
 </tr>`;
 };
 
-const tablaItems = (k: Carrito, sitio: string, paso: number) => {
+/**
+ * Los productos y el total, con los precios de este momento: salen de
+ * `products.effective_price` en la misma consulta que decide el envío, igual
+ * que los lee el carrito al cobrar.
+ *
+ * `descuento` solo en el paso 3: es lo que descuenta el cupón sobre este
+ * carrito (el porcentaje, con el tope en pesos que tiene el cupón).
+ */
+const tablaItems = (k: Carrito, sitio: string, paso: number, descuento: number | null = null) => {
   const visibles = k.items.slice(0, MAX_ITEMS);
   const resto = k.items.length - visibles.length;
 
@@ -368,6 +379,14 @@ const tablaItems = (k: Carrito, sitio: string, paso: number) => {
     <td colspan="2" style="padding:16px 0 0;font-family:${FUENTE};font-size:14px;color:${C.suave}">Total de tu carrito</td>
     <td align="right" style="padding:16px 0 0;font-family:${FUENTE};font-size:18px;font-weight:800;color:${C.primario};white-space:nowrap">${plata(k.amount)}</td>
   </tr>
+  ${
+    descuento
+      ? `<tr>
+    <td colspan="2" style="padding:8px 0 0;font-family:${FUENTE};font-size:14px;font-weight:700;color:${C.oferta}">Con tu cupón</td>
+    <td align="right" style="padding:8px 0 0;font-family:${FUENTE};font-size:18px;font-weight:800;color:${C.oferta};white-space:nowrap">${plata(k.amount - descuento)}</td>
+  </tr>`
+      : ""
+  }
 </table>`;
 };
 
@@ -488,6 +507,12 @@ const armarMail = (
 
   if (!cupon) throw new Error("El paso 3 necesita un cupón");
 
+  // Lo mismo que va a descontar el carrito: el porcentaje sobre el total, con
+  // el tope en pesos del cupón (que es el descuento cotizado para este carrito).
+  const porPorcentaje = Math.round((k.amount * cupon.pct) / 100);
+  const descuento =
+    k.discount_amount != null ? Math.min(porPorcentaje, Number(k.discount_amount)) : porPorcentaje;
+
   return {
     subject: nombre
       ? `${nombre}, te guardamos un ${cupon.pct}% OFF`
@@ -502,7 +527,7 @@ const armarMail = (
           `${hola} queremos que te lleves lo que elegiste. Por eso te dejamos un descuento exclusivo para tu carrito: ingresá el código en el carrito antes de pagar.`
         ) +
         bloqueCupon(cupon) +
-        tablaItems(k, sitio, paso) +
+        tablaItems(k, sitio, paso, descuento) +
         boton("Usar mi descuento", carrito),
     }),
   };
