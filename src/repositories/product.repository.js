@@ -1,6 +1,9 @@
 const { query } = require("../db/client");
 const { isUuid } = require("../db/uuid");
 
+// updated_at lo usa el sitemap de la tienda como <lastmod>: con la fecha del
+// día en todas las URLs, Google deja de creerle al campo.
+//
 // price is the effective price, so callers never have to apply the discount
 // themselves. price_original and price_diferred are null when no promotion
 // applies, matching what the old JS helper left on the object.
@@ -26,6 +29,7 @@ const PRODUCT_FIELDS = `
   p.alarm_details,
   p.storage_details,
   p.kit_details,
+  p.updated_at,
   p.effective_price as price,
   case when p.has_promotion and p.discount between 1 and 50
        then p.price end as price_original,
