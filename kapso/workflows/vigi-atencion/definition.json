@@ -480,7 +480,7 @@
                   "title": "Ayuda para elegir"
                 },
                 {
-                  "description": "Plazos, costos y retiro en oficina",
+                  "description": "Plazos y costos de envío a todo el país",
                   "id": "m_envios",
                   "title": "Envíos y entregas"
                 },
@@ -695,7 +695,7 @@
     {
       "data": {
         "config": {
-          "message": "🚚 *Envíos y entregas*\n\n• *CABA*: te llega en 24 h hábiles, sin costo.\n• *Resto del AMBA*: en un máximo de 4 días hábiles.\n• *Resto del país*: de 8 a 12 días hábiles. El envío es gratis desde $450.000; por debajo de ese monto se cotiza con Andreani según tu código postal y ves el costo antes de pagar.\n• *Retiro en oficina* (Caballito, CABA): a partir de las 24 h hábiles de aprobado el pago, con el DNI del titular.\n\nSi el pago se aprueba antes de las 17:00, despachamos ese mismo día. No tenemos envío express.\n\nMás info: https://www.vigi.com.ar/legales/envios",
+          "message": "🚚 *Envíos y entregas*\n\n• *CABA*: te llega en 24 h hábiles, sin costo.\n• *Resto del AMBA*: en un máximo de 4 días hábiles.\n• *Resto del país*: de 8 a 12 días hábiles. El envío es gratis desde $450.000; por debajo de ese monto se cotiza con Andreani según tu código postal y ves el costo antes de pagar.\n\nSi el pago se aprueba antes de las 17:00, despachamos ese mismo día. No tenemos envío express.\n\nMás info: https://www.vigi.com.ar/legales/envios",
           "phone_number_id": "990310140831998"
         },
         "node_type": "send_text"

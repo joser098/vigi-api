@@ -1,7 +1,7 @@
 definition: definition.json
 name: VIGI · Atención
 slug: vigi-atencion
-status: draft
+status: active
 triggers:
   - active: true
     phoneNumberId: "990310140831998"

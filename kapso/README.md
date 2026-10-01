@@ -28,7 +28,10 @@ npx kapso push --dry-run
 npx kapso push
 ```
 
-El workflow se sube en `draft`. Se activa desde el panel de Kapso.
+El workflow está **activo**. `status` en `workflow.js` tiene que coincidir con
+el del panel: si lo activás o pausás allá, cambialo acá. Antes de un push, si
+`kapso push` dice que el remoto cambió, revisá con `kapso pull --diff`: el
+panel reescribe el JSON con valores por defecto aunque no se haya tocado nada.
 
 ## Consultas desde la web
 

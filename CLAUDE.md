@@ -136,8 +136,11 @@ estáticos de `uploads/` en `/public`).
 
 Dos reglas, una sola idea: **nada que baje el precio llega en el request.**
 
-- El cupón elegido y el retiro en oficina se guardan en `carts`
-  (`coupon_id`, `local_pickup`). El body del pago no los trae.
+- El cupón elegido se guarda en `carts` (`coupon_id`). El body del pago no
+  lo trae.
+- **El retiro en oficina se dio de baja.** `carts.local_pickup` sigue en la
+  base pero el checkout lo ignora y `PUT` de la forma de entrega rechaza
+  `true`. No volver a leerlo sin reabrir el retiro en la web y en WhatsApp.
 - `services/coupons.js` decide si un cupón aplica y cuánto descuenta. Es una
   función pura, sin base.
 - `services/checkout.js` (`buildTotals`) arma subtotal, descuento, envío y

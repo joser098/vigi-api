@@ -4,6 +4,11 @@
 //             web, con el mensaje armado "Hola! Tengo una consulta sobre el
 //             producto <modelo>". Se busca el producto para responderle con
 //             el nombre, el precio y el link.
+//   m_humano  llegó desde "Consultar por este pedido" en su cuenta de la web
+//             ("Hola! Consulto por mi pedido <id>"): una consulta sobre un
+//             pedido concreto la tiene que ver una persona.
+//   m_recomendar  llegó desde "Asesorate" del header de la web ("Hola! Quiero
+//             asesoramiento para elegir"): arranca en "Ayuda para elegir".
 //   m_*       tocó un botón de un menú de una charla que ya había terminado:
 //             se lo lleva directo a esa sección en vez de saludar de nuevo.
 //   menu      todo lo demás: saludo y menú principal.
@@ -26,6 +31,15 @@ async function handler(request, env) {
 
   const id = ultimo?.reply_option_id;
   if (id && edges.includes(id)) return responder(id);
+
+  const pedido = String(ultimo?.content ?? "").match(/consulto por mi pedido\s+(\S+)/i);
+  if (pedido && edges.includes("m_humano")) {
+    return responder("m_humano", { pedido_consultado: pedido[1] });
+  }
+
+  if (/quiero asesoramiento/i.test(String(ultimo?.content ?? "")) && edges.includes("m_recomendar")) {
+    return responder("m_recomendar");
+  }
 
   const m = String(ultimo?.content ?? "").match(/consulta sobre (?:el producto\s+)?(.+?)\s*$/i);
   if (m && edges.includes("producto")) {

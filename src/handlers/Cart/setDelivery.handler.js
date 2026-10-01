@@ -1,11 +1,11 @@
 const cartRepository = require("../../repositories/cart.repository");
 
 /**
- * Guarda si el pedido se retira en oficina o se envía.
+ * Forma de entrega del carrito.
  *
- * Es la misma regla que el cupón: cualquier cosa que baje el total vive en la
- * base y no en el request. El resumen del carrito lo elige, el checkout lo
- * relee.
+ * El retiro en oficina se dio de baja: solo queda el envío, así que se rechaza
+ * `local_pickup: true`. El checkout además ignora la columna (services/checkout),
+ * por si algún carrito quedó con el valor viejo.
  */
 const setDelivery = async (req, res) => {
   try {
@@ -15,6 +15,12 @@ const setDelivery = async (req, res) => {
       return res
         .status(400)
         .json({ success: false, message: "local_pickup debe ser booleano" });
+    }
+
+    if (local_pickup) {
+      return res
+        .status(400)
+        .json({ success: false, message: "El retiro en oficina no está disponible" });
     }
 
     await cartRepository.setLocalPickup(cart_id, local_pickup);

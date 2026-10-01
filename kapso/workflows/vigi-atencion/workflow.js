@@ -21,7 +21,7 @@ const ESPERA = 6 * 60 * 60;
 
 const workflow = new Workflow("vigi-atencion", {
   name: "VIGI · Atención",
-  status: "draft",
+  status: "active",
 });
 
 workflow.addTrigger({ type: "inbound_message", phoneNumberId: PHONE_NUMBER_ID });
@@ -118,7 +118,7 @@ pregunta(
         title: "Elegí una opción",
         rows: [
           { id: "m_recomendar", title: "Ayuda para elegir", description: "Te recomendamos productos según lo que necesitás" },
-          { id: "m_envios", title: "Envíos y entregas", description: "Plazos, costos y retiro en oficina" },
+          { id: "m_envios", title: "Envíos y entregas", description: "Plazos y costos de envío a todo el país" },
           { id: "m_pagos", title: "Medios de pago" },
           { id: "m_garantia", title: "Garantía y devoluciones" },
           { id: "m_pedido", title: "Mi pedido", description: "Estado, cambios o cancelación" },
@@ -162,8 +162,7 @@ texto(
   "🚚 *Envíos y entregas*\n\n" +
     "• *CABA*: te llega en 24 h hábiles, sin costo.\n" +
     "• *Resto del AMBA*: en un máximo de 4 días hábiles.\n" +
-    "• *Resto del país*: de 8 a 12 días hábiles. El envío es gratis desde $450.000; por debajo de ese monto se cotiza con Andreani según tu código postal y ves el costo antes de pagar.\n" +
-    "• *Retiro en oficina* (Caballito, CABA): a partir de las 24 h hábiles de aprobado el pago, con el DNI del titular.\n\n" +
+    "• *Resto del país*: de 8 a 12 días hábiles. El envío es gratis desde $450.000; por debajo de ese monto se cotiza con Andreani según tu código postal y ves el costo antes de pagar.\n\n" +
     "Si el pago se aprueba antes de las 17:00, despachamos ese mismo día. No tenemos envío express.\n\n" +
     `Más info: ${TIENDA}/legales/envios`,
   0,

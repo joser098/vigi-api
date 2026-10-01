@@ -84,10 +84,10 @@ const buildTotals = async ({ cart, customer_id, address }) => {
 
   if (cart.coupon && couponId) coupon = toPublic(cart.coupon, discount);
 
-  // Retiro en oficina: no hay envío que cotizar ni tarifa que cobrar.
-  const shipping = cart.local_pickup
-    ? { cost: 0, free: true, reason: "local_pickup", quoted: false }
-    : address
+  // El retiro en oficina se dio de baja: `carts.local_pickup` se ignora a
+  // propósito, para que un carrito que lo tenía elegido no siga saliendo con
+  // envío gratis.
+  const shipping = address
     ? await quoteShipping(address, subtotal)
     : { cost: 0, free: false, reason: null, quoted: false };
 

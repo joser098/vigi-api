@@ -31,9 +31,9 @@ const getShippingCosts = async (req, res) => {
         // Nombre histórico: el frontend lo lee así desde siempre.
         shippingCost: totals.shipping.cost,
         free: totals.shipping.free,
-        // El carrito recuerda la forma de entrega, así que la pantalla la lee
-        // de acá en vez de arrancar siempre en "envío a domicilio".
-        local_pickup: Boolean(cart?.local_pickup),
+        // Siempre false: el retiro en oficina se dio de baja. Se sigue
+        // mandando para no romper un frontend viejo que todavía lo lea.
+        local_pickup: false,
         // "caba" o "min_purchase" cuando es gratis; null cuando se cotizó.
         reason: totals.shipping.reason,
         subtotal: totals.subtotal,
