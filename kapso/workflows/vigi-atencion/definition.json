@@ -1,0 +1,1410 @@
+{
+  "edges": [
+    {
+      "label": "next",
+      "source": "start",
+      "target": "entrada"
+    },
+    {
+      "label": "menu",
+      "source": "entrada",
+      "target": "menu"
+    },
+    {
+      "label": "producto",
+      "source": "entrada",
+      "target": "producto"
+    },
+    {
+      "label": "m_recomendar",
+      "source": "entrada",
+      "target": "rec_cat"
+    },
+    {
+      "label": "m_envios",
+      "source": "entrada",
+      "target": "envios"
+    },
+    {
+      "label": "m_pagos",
+      "source": "entrada",
+      "target": "pagos"
+    },
+    {
+      "label": "m_garantia",
+      "source": "entrada",
+      "target": "garantia"
+    },
+    {
+      "label": "m_pedido",
+      "source": "entrada",
+      "target": "pedido"
+    },
+    {
+      "label": "m_humano",
+      "source": "entrada",
+      "target": "humano"
+    },
+    {
+      "label": "next",
+      "source": "menu",
+      "target": "menu_esperar"
+    },
+    {
+      "label": "next",
+      "source": "menu_esperar",
+      "target": "menu_ruta"
+    },
+    {
+      "label": "m_recomendar",
+      "source": "menu_ruta",
+      "target": "rec_cat"
+    },
+    {
+      "label": "m_envios",
+      "source": "menu_ruta",
+      "target": "envios"
+    },
+    {
+      "label": "m_pagos",
+      "source": "menu_ruta",
+      "target": "pagos"
+    },
+    {
+      "label": "m_garantia",
+      "source": "menu_ruta",
+      "target": "garantia"
+    },
+    {
+      "label": "m_pedido",
+      "source": "menu_ruta",
+      "target": "pedido"
+    },
+    {
+      "label": "m_humano",
+      "source": "menu_ruta",
+      "target": "humano"
+    },
+    {
+      "label": "otro",
+      "source": "menu_ruta",
+      "target": "menu_otro"
+    },
+    {
+      "label": "next",
+      "source": "menu_otro",
+      "target": "menu"
+    },
+    {
+      "label": "timeout",
+      "source": "menu_ruta",
+      "target": "fin"
+    },
+    {
+      "label": "next",
+      "source": "producto",
+      "target": "producto_esperar"
+    },
+    {
+      "label": "next",
+      "source": "producto_esperar",
+      "target": "producto_ruta"
+    },
+    {
+      "label": "m_humano",
+      "source": "producto_ruta",
+      "target": "humano"
+    },
+    {
+      "label": "m_envios",
+      "source": "producto_ruta",
+      "target": "envios"
+    },
+    {
+      "label": "menu",
+      "source": "producto_ruta",
+      "target": "menu"
+    },
+    {
+      "label": "otro",
+      "source": "producto_ruta",
+      "target": "producto_otro"
+    },
+    {
+      "label": "next",
+      "source": "producto_otro",
+      "target": "producto"
+    },
+    {
+      "label": "timeout",
+      "source": "producto_ruta",
+      "target": "fin"
+    },
+    {
+      "label": "next",
+      "source": "envios",
+      "target": "despues"
+    },
+    {
+      "label": "next",
+      "source": "pagos",
+      "target": "despues"
+    },
+    {
+      "label": "next",
+      "source": "garantia",
+      "target": "despues"
+    },
+    {
+      "label": "next",
+      "source": "pedido",
+      "target": "despues"
+    },
+    {
+      "label": "next",
+      "source": "despues",
+      "target": "despues_esperar"
+    },
+    {
+      "label": "next",
+      "source": "despues_esperar",
+      "target": "despues_ruta"
+    },
+    {
+      "label": "menu",
+      "source": "despues_ruta",
+      "target": "menu"
+    },
+    {
+      "label": "m_humano",
+      "source": "despues_ruta",
+      "target": "humano"
+    },
+    {
+      "label": "fin_gracias",
+      "source": "despues_ruta",
+      "target": "gracias"
+    },
+    {
+      "label": "otro",
+      "source": "despues_ruta",
+      "target": "despues_otro"
+    },
+    {
+      "label": "next",
+      "source": "despues_otro",
+      "target": "despues"
+    },
+    {
+      "label": "timeout",
+      "source": "despues_ruta",
+      "target": "fin"
+    },
+    {
+      "label": "next",
+      "source": "humano",
+      "target": "handoff"
+    },
+    {
+      "label": "next",
+      "source": "rec_cat",
+      "target": "rec_cat_esperar"
+    },
+    {
+      "label": "next",
+      "source": "rec_cat_esperar",
+      "target": "rec_cat_ruta"
+    },
+    {
+      "label": "cat_camaras",
+      "source": "rec_cat_ruta",
+      "target": "rec_loc"
+    },
+    {
+      "label": "cat",
+      "source": "rec_cat_ruta",
+      "target": "rec_bud"
+    },
+    {
+      "label": "menu",
+      "source": "rec_cat_ruta",
+      "target": "menu"
+    },
+    {
+      "label": "otro",
+      "source": "rec_cat_ruta",
+      "target": "rec_cat_otro"
+    },
+    {
+      "label": "next",
+      "source": "rec_cat_otro",
+      "target": "rec_cat"
+    },
+    {
+      "label": "timeout",
+      "source": "rec_cat_ruta",
+      "target": "fin"
+    },
+    {
+      "label": "next",
+      "source": "rec_loc",
+      "target": "rec_loc_esperar"
+    },
+    {
+      "label": "next",
+      "source": "rec_loc_esperar",
+      "target": "rec_loc_ruta"
+    },
+    {
+      "label": "loc",
+      "source": "rec_loc_ruta",
+      "target": "rec_pow"
+    },
+    {
+      "label": "otro",
+      "source": "rec_loc_ruta",
+      "target": "rec_loc_otro"
+    },
+    {
+      "label": "next",
+      "source": "rec_loc_otro",
+      "target": "rec_loc"
+    },
+    {
+      "label": "timeout",
+      "source": "rec_loc_ruta",
+      "target": "fin"
+    },
+    {
+      "label": "next",
+      "source": "rec_pow",
+      "target": "rec_pow_esperar"
+    },
+    {
+      "label": "next",
+      "source": "rec_pow_esperar",
+      "target": "rec_pow_ruta"
+    },
+    {
+      "label": "pow",
+      "source": "rec_pow_ruta",
+      "target": "rec_bud"
+    },
+    {
+      "label": "otro",
+      "source": "rec_pow_ruta",
+      "target": "rec_pow_otro"
+    },
+    {
+      "label": "next",
+      "source": "rec_pow_otro",
+      "target": "rec_pow"
+    },
+    {
+      "label": "timeout",
+      "source": "rec_pow_ruta",
+      "target": "fin"
+    },
+    {
+      "label": "next",
+      "source": "rec_bud",
+      "target": "rec_bud_esperar"
+    },
+    {
+      "label": "next",
+      "source": "rec_bud_esperar",
+      "target": "rec_bud_ruta"
+    },
+    {
+      "label": "bud",
+      "source": "rec_bud_ruta",
+      "target": "recomendar"
+    },
+    {
+      "label": "otro",
+      "source": "rec_bud_ruta",
+      "target": "rec_bud_otro"
+    },
+    {
+      "label": "next",
+      "source": "rec_bud_otro",
+      "target": "rec_bud"
+    },
+    {
+      "label": "timeout",
+      "source": "rec_bud_ruta",
+      "target": "fin"
+    },
+    {
+      "label": "next",
+      "source": "recomendar",
+      "target": "recomendacion"
+    },
+    {
+      "label": "next",
+      "source": "recomendacion",
+      "target": "rec_despues"
+    },
+    {
+      "label": "next",
+      "source": "rec_despues",
+      "target": "rec_despues_esperar"
+    },
+    {
+      "label": "next",
+      "source": "rec_despues_esperar",
+      "target": "rec_despues_ruta"
+    },
+    {
+      "label": "m_recomendar",
+      "source": "rec_despues_ruta",
+      "target": "rec_cat"
+    },
+    {
+      "label": "m_humano",
+      "source": "rec_despues_ruta",
+      "target": "humano"
+    },
+    {
+      "label": "menu",
+      "source": "rec_despues_ruta",
+      "target": "menu"
+    },
+    {
+      "label": "otro",
+      "source": "rec_despues_ruta",
+      "target": "rec_despues_otro"
+    },
+    {
+      "label": "next",
+      "source": "rec_despues_otro",
+      "target": "rec_despues"
+    },
+    {
+      "label": "timeout",
+      "source": "rec_despues_ruta",
+      "target": "fin"
+    }
+  ],
+  "nodes": [
+    {
+      "data": {
+        "config": {},
+        "node_type": "start"
+      },
+      "id": "start",
+      "position": {
+        "x": 120,
+        "y": 100
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "conditions": [
+            {
+              "description": "La función de ruteo devolvió \"menu\"",
+              "label": "menu"
+            },
+            {
+              "description": "La función de ruteo devolvió \"producto\"",
+              "label": "producto"
+            },
+            {
+              "description": "La función de ruteo devolvió \"m_recomendar\"",
+              "label": "m_recomendar"
+            },
+            {
+              "description": "La función de ruteo devolvió \"m_envios\"",
+              "label": "m_envios"
+            },
+            {
+              "description": "La función de ruteo devolvió \"m_pagos\"",
+              "label": "m_pagos"
+            },
+            {
+              "description": "La función de ruteo devolvió \"m_garantia\"",
+              "label": "m_garantia"
+            },
+            {
+              "description": "La función de ruteo devolvió \"m_pedido\"",
+              "label": "m_pedido"
+            },
+            {
+              "description": "La función de ruteo devolvió \"m_humano\"",
+              "label": "m_humano"
+            }
+          ],
+          "decision_type": "function",
+          "function_slug": "vigi-entrada"
+        },
+        "node_type": "decide"
+      },
+      "id": "entrada",
+      "position": {
+        "x": 440,
+        "y": 100
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "value_type": "boolean",
+          "variable_name": "cerrado",
+          "variable_value": true
+        },
+        "node_type": "set_variable"
+      },
+      "id": "fin",
+      "position": {
+        "x": 1400,
+        "y": 100
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "body_text": "¡Hola! 👋 Somos *VIGI*, tienda online de cámaras y seguridad para tu casa o negocio.\n\n¿En qué te ayudamos?",
+          "footer_text": "Las compras se hacen en vigi.com.ar",
+          "interactive_type": "list",
+          "list_button_text": "Ver opciones",
+          "list_sections": [
+            {
+              "rows": [
+                {
+                  "description": "Te recomendamos productos según lo que necesitás",
+                  "id": "m_recomendar",
+                  "title": "Ayuda para elegir"
+                },
+                {
+                  "description": "Plazos, costos y retiro en oficina",
+                  "id": "m_envios",
+                  "title": "Envíos y entregas"
+                },
+                {
+                  "id": "m_pagos",
+                  "title": "Medios de pago"
+                },
+                {
+                  "id": "m_garantia",
+                  "title": "Garantía y devoluciones"
+                },
+                {
+                  "description": "Estado, cambios o cancelación",
+                  "id": "m_pedido",
+                  "title": "Mi pedido"
+                },
+                {
+                  "id": "m_humano",
+                  "title": "Hablar con una persona"
+                }
+              ],
+              "title": "Elegí una opción"
+            }
+          ],
+          "phone_number_id": "990310140831998"
+        },
+        "node_type": "send_interactive"
+      },
+      "id": "menu",
+      "position": {
+        "x": 120,
+        "y": 320
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "has_timeout": true,
+          "timeout_seconds": 21600
+        },
+        "node_type": "wait_for_response"
+      },
+      "id": "menu_esperar",
+      "position": {
+        "x": 440,
+        "y": 320
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "conditions": [
+            {
+              "description": "La función de ruteo devolvió \"m_recomendar\"",
+              "label": "m_recomendar"
+            },
+            {
+              "description": "La función de ruteo devolvió \"m_envios\"",
+              "label": "m_envios"
+            },
+            {
+              "description": "La función de ruteo devolvió \"m_pagos\"",
+              "label": "m_pagos"
+            },
+            {
+              "description": "La función de ruteo devolvió \"m_garantia\"",
+              "label": "m_garantia"
+            },
+            {
+              "description": "La función de ruteo devolvió \"m_pedido\"",
+              "label": "m_pedido"
+            },
+            {
+              "description": "La función de ruteo devolvió \"m_humano\"",
+              "label": "m_humano"
+            },
+            {
+              "description": "La función de ruteo devolvió \"otro\"",
+              "label": "otro"
+            },
+            {
+              "description": "La función de ruteo devolvió \"timeout\"",
+              "label": "timeout"
+            }
+          ],
+          "decision_type": "function",
+          "function_slug": "vigi-ruteo"
+        },
+        "node_type": "decide"
+      },
+      "id": "menu_ruta",
+      "position": {
+        "x": 760,
+        "y": 320
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "message": "Para ayudarte mejor, elegí una de las opciones 👇",
+          "phone_number_id": "990310140831998"
+        },
+        "node_type": "send_text"
+      },
+      "id": "menu_otro",
+      "position": {
+        "x": 1080,
+        "y": 320
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "body_text": "¡Hola! 👋 Gracias por escribirnos por *{{vars.producto_titulo}}* ({{vars.producto_precio}}).\n\nLo podés ver y comprar acá: {{vars.producto_url}}\n\n¿En qué te ayudamos?",
+          "buttons": [
+            {
+              "id": "m_humano",
+              "title": "Tengo una pregunta"
+            },
+            {
+              "id": "m_envios",
+              "title": "Envíos y entregas"
+            },
+            {
+              "id": "menu",
+              "title": "Ver más opciones"
+            }
+          ],
+          "interactive_type": "button",
+          "phone_number_id": "990310140831998"
+        },
+        "node_type": "send_interactive"
+      },
+      "id": "producto",
+      "position": {
+        "x": 120,
+        "y": 540
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "has_timeout": true,
+          "timeout_seconds": 21600
+        },
+        "node_type": "wait_for_response"
+      },
+      "id": "producto_esperar",
+      "position": {
+        "x": 440,
+        "y": 540
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "conditions": [
+            {
+              "description": "La función de ruteo devolvió \"m_humano\"",
+              "label": "m_humano"
+            },
+            {
+              "description": "La función de ruteo devolvió \"m_envios\"",
+              "label": "m_envios"
+            },
+            {
+              "description": "La función de ruteo devolvió \"menu\"",
+              "label": "menu"
+            },
+            {
+              "description": "La función de ruteo devolvió \"otro\"",
+              "label": "otro"
+            },
+            {
+              "description": "La función de ruteo devolvió \"timeout\"",
+              "label": "timeout"
+            }
+          ],
+          "decision_type": "function",
+          "function_slug": "vigi-ruteo"
+        },
+        "node_type": "decide"
+      },
+      "id": "producto_ruta",
+      "position": {
+        "x": 760,
+        "y": 540
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "message": "Para ayudarte mejor, elegí una de las opciones 👇",
+          "phone_number_id": "990310140831998"
+        },
+        "node_type": "send_text"
+      },
+      "id": "producto_otro",
+      "position": {
+        "x": 1080,
+        "y": 540
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "message": "🚚 *Envíos y entregas*\n\n• *CABA*: te llega en 24 h hábiles, sin costo.\n• *Resto del AMBA*: en un máximo de 4 días hábiles.\n• *Resto del país*: de 8 a 12 días hábiles. El envío es gratis desde $450.000; por debajo de ese monto se cotiza con Andreani según tu código postal y ves el costo antes de pagar.\n• *Retiro en oficina* (Caballito, CABA): a partir de las 24 h hábiles de aprobado el pago, con el DNI del titular.\n\nSi el pago se aprueba antes de las 17:00, despachamos ese mismo día. No tenemos envío express.\n\nMás info: https://www.vigi.com.ar/legales/envios",
+          "phone_number_id": "990310140831998"
+        },
+        "node_type": "send_text"
+      },
+      "id": "envios",
+      "position": {
+        "x": 120,
+        "y": 760
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "message": "💳 *Medios de pago*\n\nAceptamos tarjetas de crédito (Visa, Mastercard, American Express) y de débito.\n\nEl pago se hace en la web al finalizar la compra: en el carrito elegís uno de los dos procesadores y completás el pago en su pantalla, de forma segura.\n\n👉 https://www.vigi.com.ar",
+          "phone_number_id": "990310140831998"
+        },
+        "node_type": "send_text"
+      },
+      "id": "pagos",
+      "position": {
+        "x": 440,
+        "y": 760
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "message": "🛡️ *Garantía y devoluciones*\n\nTodos nuestros productos son nuevos y tienen garantía.\n\n• *Si llegó fallado o dañado*: avisanos dentro de los 5 días corridos de recibirlo y te lo cambiamos o te devolvemos el dinero, a tu elección. Tiene que conservar sus accesorios originales.\n• *Después de esos 5 días*: rige la garantía del fabricante, de 6 meses a 2 años según la marca, y te ayudamos a gestionarla.\n\nPara iniciar un caso, escribinos a contacto@vigi.com.ar con el asunto \"Producto defectuoso\", fotos o video del problema y tu número de pedido.\n\nPolítica completa: https://www.vigi.com.ar/legales/devoluciones",
+          "phone_number_id": "990310140831998"
+        },
+        "node_type": "send_text"
+      },
+      "id": "garantia",
+      "position": {
+        "x": 760,
+        "y": 760
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "message": "📦 *Tu pedido*\n\nCuando despachamos tu pedido te llega un mail. Para ver el estado, entrá a tu cuenta en la web, en la sección \"Pedidos\":\nhttps://www.vigi.com.ar/profile\n\nSi necesitás modificarlo o cancelarlo, hablá con nosotros lo antes posible: una vez despachado, puede que no podamos hacer cambios.",
+          "phone_number_id": "990310140831998"
+        },
+        "node_type": "send_text"
+      },
+      "id": "pedido",
+      "position": {
+        "x": 1080,
+        "y": 760
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "body_text": "¿Te ayudamos con algo más?",
+          "buttons": [
+            {
+              "id": "menu",
+              "title": "Menú principal"
+            },
+            {
+              "id": "m_humano",
+              "title": "Hablar con alguien"
+            },
+            {
+              "id": "fin_gracias",
+              "title": "Listo, gracias"
+            }
+          ],
+          "interactive_type": "button",
+          "phone_number_id": "990310140831998"
+        },
+        "node_type": "send_interactive"
+      },
+      "id": "despues",
+      "position": {
+        "x": 120,
+        "y": 980
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "has_timeout": true,
+          "timeout_seconds": 21600
+        },
+        "node_type": "wait_for_response"
+      },
+      "id": "despues_esperar",
+      "position": {
+        "x": 440,
+        "y": 980
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "conditions": [
+            {
+              "description": "La función de ruteo devolvió \"menu\"",
+              "label": "menu"
+            },
+            {
+              "description": "La función de ruteo devolvió \"m_humano\"",
+              "label": "m_humano"
+            },
+            {
+              "description": "La función de ruteo devolvió \"fin_gracias\"",
+              "label": "fin_gracias"
+            },
+            {
+              "description": "La función de ruteo devolvió \"otro\"",
+              "label": "otro"
+            },
+            {
+              "description": "La función de ruteo devolvió \"timeout\"",
+              "label": "timeout"
+            }
+          ],
+          "decision_type": "function",
+          "function_slug": "vigi-ruteo"
+        },
+        "node_type": "decide"
+      },
+      "id": "despues_ruta",
+      "position": {
+        "x": 760,
+        "y": 980
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "message": "Para ayudarte mejor, elegí una de las opciones 👇",
+          "phone_number_id": "990310140831998"
+        },
+        "node_type": "send_text"
+      },
+      "id": "despues_otro",
+      "position": {
+        "x": 1080,
+        "y": 980
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "message": "¡Gracias por escribirnos! 🙌 Cuando quieras, estamos por acá.",
+          "phone_number_id": "990310140831998"
+        },
+        "node_type": "send_text"
+      },
+      "id": "gracias",
+      "position": {
+        "x": 1400,
+        "y": 980
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "message": "Listo, te pasamos con una persona del equipo. 🙌\n\nContanos tu consulta y te respondemos por acá lo antes posible.",
+          "phone_number_id": "990310140831998"
+        },
+        "node_type": "send_text"
+      },
+      "id": "humano",
+      "position": {
+        "x": 120,
+        "y": 1200
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "reason": "pidio_persona"
+        },
+        "node_type": "handoff"
+      },
+      "id": "handoff",
+      "position": {
+        "x": 440,
+        "y": 1200
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "body_text": "Te ayudamos a elegir. ¿Qué estás buscando?",
+          "interactive_type": "list",
+          "list_button_text": "Elegir",
+          "list_sections": [
+            {
+              "rows": [
+                {
+                  "id": "cat_camaras",
+                  "title": "Cámaras"
+                },
+                {
+                  "description": "Grabador + cámaras, todo junto",
+                  "id": "cat_kits",
+                  "title": "Kit de cámaras"
+                },
+                {
+                  "id": "cat_alarmas",
+                  "title": "Una alarma"
+                },
+                {
+                  "id": "cat_porteros",
+                  "title": "Portero eléctrico"
+                },
+                {
+                  "id": "cat_cerraduras",
+                  "title": "Cerradura inteligente"
+                },
+                {
+                  "id": "menu",
+                  "title": "Volver al menú"
+                }
+              ]
+            }
+          ],
+          "phone_number_id": "990310140831998"
+        },
+        "node_type": "send_interactive"
+      },
+      "id": "rec_cat",
+      "position": {
+        "x": 120,
+        "y": 1420
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "has_timeout": true,
+          "timeout_seconds": 21600
+        },
+        "node_type": "wait_for_response"
+      },
+      "id": "rec_cat_esperar",
+      "position": {
+        "x": 440,
+        "y": 1420
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "conditions": [
+            {
+              "description": "La función de ruteo devolvió \"cat_camaras\"",
+              "label": "cat_camaras"
+            },
+            {
+              "description": "La función de ruteo devolvió \"cat\"",
+              "label": "cat"
+            },
+            {
+              "description": "La función de ruteo devolvió \"menu\"",
+              "label": "menu"
+            },
+            {
+              "description": "La función de ruteo devolvió \"otro\"",
+              "label": "otro"
+            },
+            {
+              "description": "La función de ruteo devolvió \"timeout\"",
+              "label": "timeout"
+            }
+          ],
+          "decision_type": "function",
+          "function_slug": "vigi-ruteo"
+        },
+        "node_type": "decide"
+      },
+      "id": "rec_cat_ruta",
+      "position": {
+        "x": 760,
+        "y": 1420
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "message": "Para ayudarte mejor, elegí una de las opciones 👇",
+          "phone_number_id": "990310140831998"
+        },
+        "node_type": "send_text"
+      },
+      "id": "rec_cat_otro",
+      "position": {
+        "x": 1080,
+        "y": 1420
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "body_text": "¿Dónde la vas a poner?",
+          "buttons": [
+            {
+              "id": "loc_interior",
+              "title": "Adentro"
+            },
+            {
+              "id": "loc_exterior",
+              "title": "Afuera"
+            },
+            {
+              "id": "loc_ambas",
+              "title": "En los dos lados"
+            }
+          ],
+          "interactive_type": "button",
+          "phone_number_id": "990310140831998"
+        },
+        "node_type": "send_interactive"
+      },
+      "id": "rec_loc",
+      "position": {
+        "x": 120,
+        "y": 1640
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "has_timeout": true,
+          "timeout_seconds": 21600
+        },
+        "node_type": "wait_for_response"
+      },
+      "id": "rec_loc_esperar",
+      "position": {
+        "x": 440,
+        "y": 1640
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "conditions": [
+            {
+              "description": "La función de ruteo devolvió \"loc\"",
+              "label": "loc"
+            },
+            {
+              "description": "La función de ruteo devolvió \"otro\"",
+              "label": "otro"
+            },
+            {
+              "description": "La función de ruteo devolvió \"timeout\"",
+              "label": "timeout"
+            }
+          ],
+          "decision_type": "function",
+          "function_slug": "vigi-ruteo"
+        },
+        "node_type": "decide"
+      },
+      "id": "rec_loc_ruta",
+      "position": {
+        "x": 760,
+        "y": 1640
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "message": "Para ayudarte mejor, elegí una de las opciones 👇",
+          "phone_number_id": "990310140831998"
+        },
+        "node_type": "send_text"
+      },
+      "id": "rec_loc_otro",
+      "position": {
+        "x": 1080,
+        "y": 1640
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "body_text": "¿Tenés un enchufe cerca?",
+          "buttons": [
+            {
+              "id": "pow_enchufe",
+              "title": "Sí, hay enchufe"
+            },
+            {
+              "id": "pow_bateria",
+              "title": "No, mejor batería"
+            }
+          ],
+          "interactive_type": "button",
+          "phone_number_id": "990310140831998"
+        },
+        "node_type": "send_interactive"
+      },
+      "id": "rec_pow",
+      "position": {
+        "x": 120,
+        "y": 1860
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "has_timeout": true,
+          "timeout_seconds": 21600
+        },
+        "node_type": "wait_for_response"
+      },
+      "id": "rec_pow_esperar",
+      "position": {
+        "x": 440,
+        "y": 1860
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "conditions": [
+            {
+              "description": "La función de ruteo devolvió \"pow\"",
+              "label": "pow"
+            },
+            {
+              "description": "La función de ruteo devolvió \"otro\"",
+              "label": "otro"
+            },
+            {
+              "description": "La función de ruteo devolvió \"timeout\"",
+              "label": "timeout"
+            }
+          ],
+          "decision_type": "function",
+          "function_slug": "vigi-ruteo"
+        },
+        "node_type": "decide"
+      },
+      "id": "rec_pow_ruta",
+      "position": {
+        "x": 760,
+        "y": 1860
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "message": "Para ayudarte mejor, elegí una de las opciones 👇",
+          "phone_number_id": "990310140831998"
+        },
+        "node_type": "send_text"
+      },
+      "id": "rec_pow_otro",
+      "position": {
+        "x": 1080,
+        "y": 1860
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "body_text": "¿Cuánto querés gastar?",
+          "interactive_type": "list",
+          "list_button_text": "Elegir",
+          "list_sections": [
+            {
+              "rows": [
+                {
+                  "id": "bud_60000",
+                  "title": "Hasta $60.000"
+                },
+                {
+                  "id": "bud_120000",
+                  "title": "Hasta $120.000"
+                },
+                {
+                  "id": "bud_250000",
+                  "title": "Hasta $250.000"
+                },
+                {
+                  "id": "bud_0",
+                  "title": "Sin límite"
+                }
+              ]
+            }
+          ],
+          "phone_number_id": "990310140831998"
+        },
+        "node_type": "send_interactive"
+      },
+      "id": "rec_bud",
+      "position": {
+        "x": 120,
+        "y": 2080
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "has_timeout": true,
+          "timeout_seconds": 21600
+        },
+        "node_type": "wait_for_response"
+      },
+      "id": "rec_bud_esperar",
+      "position": {
+        "x": 440,
+        "y": 2080
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "conditions": [
+            {
+              "description": "La función de ruteo devolvió \"bud\"",
+              "label": "bud"
+            },
+            {
+              "description": "La función de ruteo devolvió \"otro\"",
+              "label": "otro"
+            },
+            {
+              "description": "La función de ruteo devolvió \"timeout\"",
+              "label": "timeout"
+            }
+          ],
+          "decision_type": "function",
+          "function_slug": "vigi-ruteo"
+        },
+        "node_type": "decide"
+      },
+      "id": "rec_bud_ruta",
+      "position": {
+        "x": 760,
+        "y": 2080
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "message": "Para ayudarte mejor, elegí una de las opciones 👇",
+          "phone_number_id": "990310140831998"
+        },
+        "node_type": "send_text"
+      },
+      "id": "rec_bud_otro",
+      "position": {
+        "x": 1080,
+        "y": 2080
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "function_slug": "vigi-recomendar"
+        },
+        "node_type": "function"
+      },
+      "id": "recomendar",
+      "position": {
+        "x": 120,
+        "y": 2300
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "message": "{{vars.recomendacion}}",
+          "phone_number_id": "990310140831998"
+        },
+        "node_type": "send_text"
+      },
+      "id": "recomendacion",
+      "position": {
+        "x": 440,
+        "y": 2300
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "body_text": "¿Qué hacemos ahora?",
+          "buttons": [
+            {
+              "id": "m_recomendar",
+              "title": "Buscar otra cosa"
+            },
+            {
+              "id": "m_humano",
+              "title": "Hablar con alguien"
+            },
+            {
+              "id": "menu",
+              "title": "Menú principal"
+            }
+          ],
+          "interactive_type": "button",
+          "phone_number_id": "990310140831998"
+        },
+        "node_type": "send_interactive"
+      },
+      "id": "rec_despues",
+      "position": {
+        "x": 120,
+        "y": 2520
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "has_timeout": true,
+          "timeout_seconds": 21600
+        },
+        "node_type": "wait_for_response"
+      },
+      "id": "rec_despues_esperar",
+      "position": {
+        "x": 440,
+        "y": 2520
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "conditions": [
+            {
+              "description": "La función de ruteo devolvió \"m_recomendar\"",
+              "label": "m_recomendar"
+            },
+            {
+              "description": "La función de ruteo devolvió \"m_humano\"",
+              "label": "m_humano"
+            },
+            {
+              "description": "La función de ruteo devolvió \"menu\"",
+              "label": "menu"
+            },
+            {
+              "description": "La función de ruteo devolvió \"otro\"",
+              "label": "otro"
+            },
+            {
+              "description": "La función de ruteo devolvió \"timeout\"",
+              "label": "timeout"
+            }
+          ],
+          "decision_type": "function",
+          "function_slug": "vigi-ruteo"
+        },
+        "node_type": "decide"
+      },
+      "id": "rec_despues_ruta",
+      "position": {
+        "x": 760,
+        "y": 2520
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "message": "Para ayudarte mejor, elegí una de las opciones 👇",
+          "phone_number_id": "990310140831998"
+        },
+        "node_type": "send_text"
+      },
+      "id": "rec_despues_otro",
+      "position": {
+        "x": 1080,
+        "y": 2520
+      },
+      "type": "flow-node"
+    }
+  ]
+}
