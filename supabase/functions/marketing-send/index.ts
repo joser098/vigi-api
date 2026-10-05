@@ -225,7 +225,14 @@ const json = (body: unknown, status = 200) =>
 
 const env = (k: string) => Deno.env.get(k) ?? "";
 
-type Contacto = { id: string; email: string; name: string | null; unsubscribe_token: string };
+type Contacto = {
+  id: string;
+  email: string;
+  name: string | null;
+  unsubscribe_token: string;
+  lists?: string[];
+  in_general?: boolean;
+};
 
 /**
  * Trae una tabla entera, de a mil filas.
@@ -388,7 +395,7 @@ Deno.serve(async (req) => {
     contactos = await traerTodo<Contacto>((desde, hasta) =>
       admin_db
         .from("marketing_contacts")
-        .select("id, email, name, unsubscribe_token")
+        .select("id, email, name, unsubscribe_token, lists, in_general")
         .eq("is_subscribed", true)
         .order("created_at", { ascending: true })
         .range(desde, hasta)
@@ -413,6 +420,13 @@ Deno.serve(async (req) => {
       );
       const emails = new Set(enSegmento.map((e) => String(e.email).toLowerCase()));
       contactos = contactos.filter((c) => emails.has(c.email.toLowerCase()));
+    } else if (campana.list) {
+      // Campaña para una lista (migración 0027): solo los que están en ella.
+      contactos = contactos.filter((c) => (c.lists ?? []).includes(campana.list));
+    } else {
+      // "Todos los suscriptos" es la lista general: los que entraron solo por
+      // una lista armada a mano quedan afuera.
+      contactos = contactos.filter((c) => c.in_general !== false);
     }
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);
