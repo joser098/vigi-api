@@ -175,8 +175,12 @@ octubre de 2026. Spec y respuestas reales en `vigi-admin/docs/correo-argentino.m
   todo; fuera de CABA, solo la sucursal y desde `FREE_SHIPPING_MIN_PURCHASE`
   ($450.000, medido sobre el subtotal con cupón).
 - Tercera opción, **acordar el envío** (`A`): no se cobra, el cliente paga solo
-  los productos y se lo contacta después (el mail al admin dice "acordar envío"
-  en el asunto). Es para cerrar la venta: si Correo falla, `quoteShipping` no
+  los productos y **él escribe por WhatsApp** (menú de Kapso → "Acordar envío de
+  compra" → número de pedido). `kapso/functions/vigi-acordar` valida el número
+  con `GET /api/order/acordar/:payment_id` (público, sin datos del cliente) y
+  pasa la charla a una persona. El mail de compra y la pantalla de pago aprobado
+  traen el link con el mensaje armado (`utils/whatsapp.js`); el mail al admin
+  dice "acordar envío" en el asunto. Es para cerrar la venta: si Correo falla, `quoteShipping` no
   lanza, devuelve `cost: null` + `quote_error`, y el checkout ofrece `A`.
   `createPaymentOrder` se niega a cobrar con `cost` null.
 - La elección vive en el carrito (`carts.delivery_type`, `shipping_agency`,
@@ -188,9 +192,9 @@ octubre de 2026. Spec y respuestas reales en `vigi-admin/docs/correo-argentino.m
   orden lo copia (`orders.delivery_type`, `shipping_agency`, `shipping_cost`),
   igual que el cupón.
 
-**Pendiente:** ninguna categoría tiene perfil de caja, así que hoy todo cotiza
-como "Estándar" (3,5 kg, 20×25×35 por unidad). Asignarlos desde vigi-admin
-`/envios`. `valorDeclarado` no se manda todavía (MiCorreo lo
+Perfiles de caja asignados el 2026-10-08 (Chico, Cámara, Mediano, Grabador,
+Cerradura, Monitor, Kit) con medidas **estimadas**: ajustarlos con cajas reales
+desde vigi-admin `/envios`. `valorDeclarado` no se manda todavía (MiCorreo lo
 pide recién en `/shipping/import`, fase 2).
 
 ### Mails de estado del pedido

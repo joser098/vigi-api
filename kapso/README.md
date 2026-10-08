@@ -12,6 +12,7 @@ cliente siempre se le dan opciones, y toda compra se hace en la web.
 | `functions/vigi-entrada` | Primer paso: menú, consulta desde la ficha de un producto, o botón de una charla anterior |
 | `functions/vigi-ruteo` | Decide de cada pregunta: lee el botón tocado y devuelve el camino |
 | `functions/vigi-recomendar` | "Ayuda para elegir": mismo asistente que el home, vía `/api/search/recommend` |
+| `functions/vigi-acordar` | "Acordar envío de compra": valida el número de pedido con `/api/order/acordar/:id` y pasa a una persona |
 
 Los textos (envíos, pagos, garantía, pedidos) salen de `vigi-app`: preguntas
 frecuentes, "Formas de entrega" y `/legales/devoluciones`. **Si cambia una
@@ -32,6 +33,16 @@ El workflow está **activo**. `status` en `workflow.js` tiene que coincidir con
 el del panel: si lo activás o pausás allá, cambialo acá. Antes de un push, si
 `kapso push` dice que el remoto cambió, revisá con `kapso pull --diff`: el
 panel reescribe el JSON con valores por defecto aunque no se haya tocado nada.
+
+## Acordar el envío
+
+Cuando el cliente elige "acordar el envío" en el checkout, paga solo los
+productos y tiene que escribir acá: menú → "Acordar envío de compra" → número
+de pedido. Si el pedido es de acordar, la charla pasa a una persona (handoff
+`acordar_envio`) para coordinar punto, día y horario en CABA. El mail de
+compra trae un link que manda `Hola! Quiero acordar el envío de mi pedido <id>`
+(`vigi-api/src/utils/whatsapp.js`) y `vigi-entrada` lo lleva directo a la
+validación. Condiciones: `vigi-app` `/legales/envios#acordar`.
 
 ## Consultas desde la web
 

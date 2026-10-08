@@ -11,9 +11,19 @@
       "target": "menu"
     },
     {
+      "label": "acordar_directo",
+      "source": "entrada",
+      "target": "acordar_ruta"
+    },
+    {
       "label": "producto",
       "source": "entrada",
       "target": "producto"
+    },
+    {
+      "label": "m_acordar",
+      "source": "entrada",
+      "target": "acordar"
     },
     {
       "label": "m_recomendar",
@@ -54,6 +64,11 @@
       "label": "next",
       "source": "menu_esperar",
       "target": "menu_ruta"
+    },
+    {
+      "label": "m_acordar",
+      "source": "menu_ruta",
+      "target": "acordar"
     },
     {
       "label": "m_recomendar",
@@ -198,6 +213,86 @@
     {
       "label": "timeout",
       "source": "despues_ruta",
+      "target": "fin"
+    },
+    {
+      "label": "next",
+      "source": "acordar",
+      "target": "acordar_esperar"
+    },
+    {
+      "label": "next",
+      "source": "acordar_esperar",
+      "target": "acordar_ruta"
+    },
+    {
+      "label": "timeout",
+      "source": "acordar_ruta",
+      "target": "fin"
+    },
+    {
+      "label": "ok",
+      "source": "acordar_ruta",
+      "target": "acordar_ok"
+    },
+    {
+      "label": "next",
+      "source": "acordar_ok",
+      "target": "acordar_handoff"
+    },
+    {
+      "label": "no_es_acordar",
+      "source": "acordar_ruta",
+      "target": "acordar_no_es"
+    },
+    {
+      "label": "next",
+      "source": "acordar_no_es",
+      "target": "despues"
+    },
+    {
+      "label": "no_encontrado",
+      "source": "acordar_ruta",
+      "target": "acordar_reintentar"
+    },
+    {
+      "label": "next",
+      "source": "acordar_reintentar",
+      "target": "acordar_reintentar_esperar"
+    },
+    {
+      "label": "next",
+      "source": "acordar_reintentar_esperar",
+      "target": "acordar_reintentar_ruta"
+    },
+    {
+      "label": "m_acordar",
+      "source": "acordar_reintentar_ruta",
+      "target": "acordar"
+    },
+    {
+      "label": "m_humano",
+      "source": "acordar_reintentar_ruta",
+      "target": "humano"
+    },
+    {
+      "label": "menu",
+      "source": "acordar_reintentar_ruta",
+      "target": "menu"
+    },
+    {
+      "label": "otro",
+      "source": "acordar_reintentar_ruta",
+      "target": "acordar_reintentar_otro"
+    },
+    {
+      "label": "next",
+      "source": "acordar_reintentar_otro",
+      "target": "acordar_reintentar"
+    },
+    {
+      "label": "timeout",
+      "source": "acordar_reintentar_ruta",
       "target": "fin"
     },
     {
@@ -412,6 +507,14 @@
               "label": "producto"
             },
             {
+              "description": "La función de ruteo devolvió \"acordar_directo\"",
+              "label": "acordar_directo"
+            },
+            {
+              "description": "La función de ruteo devolvió \"m_acordar\"",
+              "label": "m_acordar"
+            },
+            {
               "description": "La función de ruteo devolvió \"m_recomendar\"",
               "label": "m_recomendar"
             },
@@ -475,6 +578,11 @@
             {
               "rows": [
                 {
+                  "description": "Compraste con \"acordar el envío\": coordinamos la entrega",
+                  "id": "m_acordar",
+                  "title": "Acordar envío de compra"
+                },
+                {
                   "description": "Te recomendamos productos según lo que necesitás",
                   "id": "m_recomendar",
                   "title": "Ayuda para elegir"
@@ -535,6 +643,10 @@
       "data": {
         "config": {
           "conditions": [
+            {
+              "description": "La función de ruteo devolvió \"m_acordar\"",
+              "label": "m_acordar"
+            },
             {
               "description": "La función de ruteo devolvió \"m_recomendar\"",
               "label": "m_recomendar"
@@ -695,7 +807,7 @@
     {
       "data": {
         "config": {
-          "message": "🚚 *Envíos y entregas*\n\n• *CABA*: te llega en 24 h hábiles, sin costo.\n• *Resto del AMBA*: en un máximo de 4 días hábiles.\n• *Resto del país*: de 8 a 12 días hábiles. El envío es gratis desde $450.000; por debajo de ese monto se cotiza con Andreani según tu código postal y ves el costo antes de pagar.\n\nSi el pago se aprueba antes de las 17:00, despachamos ese mismo día. No tenemos envío express.\n\nMás info: https://www.vigi.com.ar/legales/envios",
+          "message": "🚚 *Envíos y entregas*\n\n• *CABA*: te llega en 24 h hábiles, sin costo.\n• *Resto del AMBA*: en un máximo de 4 días hábiles.\n• *Resto del país*: de 8 a 12 días hábiles, por Correo Argentino, a domicilio o para retirar en sucursal. El retiro en sucursal es gratis desde $450.000; el resto se cotiza según tu código postal y ves el costo antes de pagar.\n• *Acordar el envío*: pagás solo los productos y te lo llevamos sin cargo a un punto de CABA que te sirva (por ejemplo, un expreso). Después de comprar, escribinos acá y elegí \"Acordar envío de compra\".\n\nSi el pago se aprueba antes de las 17:00, despachamos ese mismo día. No tenemos envío express.\n\nMás info: https://www.vigi.com.ar/legales/envios",
           "phone_number_id": "990310140831998"
         },
         "node_type": "send_text"
@@ -867,6 +979,210 @@
     {
       "data": {
         "config": {
+          "message": "📦 *Acordar el envío*\n\nMandanos tu *número de pedido*. Lo encontrás en el mail de confirmación de compra y en tu cuenta de la web, en \"Pedidos\".",
+          "phone_number_id": "990310140831998"
+        },
+        "node_type": "send_text"
+      },
+      "id": "acordar",
+      "position": {
+        "x": 120,
+        "y": 1200
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "has_timeout": true,
+          "timeout_seconds": 21600
+        },
+        "node_type": "wait_for_response"
+      },
+      "id": "acordar_esperar",
+      "position": {
+        "x": 440,
+        "y": 1200
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "conditions": [
+            {
+              "description": "La función de ruteo devolvió \"ok\"",
+              "label": "ok"
+            },
+            {
+              "description": "La función de ruteo devolvió \"no_es_acordar\"",
+              "label": "no_es_acordar"
+            },
+            {
+              "description": "La función de ruteo devolvió \"no_encontrado\"",
+              "label": "no_encontrado"
+            },
+            {
+              "description": "La función de ruteo devolvió \"timeout\"",
+              "label": "timeout"
+            }
+          ],
+          "decision_type": "function",
+          "function_slug": "vigi-acordar"
+        },
+        "node_type": "decide"
+      },
+      "id": "acordar_ruta",
+      "position": {
+        "x": 760,
+        "y": 1200
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "message": "¡Listo! ✅ Encontramos tu pedido *{{vars.pedido_acordar}}*.\n\nTe pasamos con una persona del equipo para coordinar el punto, el día y el horario de entrega en CABA. Si ya sabés a qué expreso, transporte o dirección querés que lo llevemos, contanos acá.\n\nCondiciones: https://www.vigi.com.ar/legales/envios#acordar",
+          "phone_number_id": "990310140831998"
+        },
+        "node_type": "send_text"
+      },
+      "id": "acordar_ok",
+      "position": {
+        "x": 120,
+        "y": 1420
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "reason": "acordar_envio"
+        },
+        "node_type": "handoff"
+      },
+      "id": "acordar_handoff",
+      "position": {
+        "x": 440,
+        "y": 1420
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "message": "El pedido *{{vars.pedido_acordar}}* no tiene el envío a acordar: va por Correo Argentino, como elegiste al comprar. Estado: *{{vars.pedido_estado}}*.\n\nPodés seguirlo desde tu cuenta: https://www.vigi.com.ar/profile",
+          "phone_number_id": "990310140831998"
+        },
+        "node_type": "send_text"
+      },
+      "id": "acordar_no_es",
+      "position": {
+        "x": 760,
+        "y": 1420
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "body_text": "No encontramos ese número de pedido. 🤔 Revisalo en el mail de confirmación de compra: es el que dice \"Número de orden\".",
+          "buttons": [
+            {
+              "id": "m_acordar",
+              "title": "Probar de nuevo"
+            },
+            {
+              "id": "m_humano",
+              "title": "Hablar con alguien"
+            },
+            {
+              "id": "menu",
+              "title": "Menú principal"
+            }
+          ],
+          "interactive_type": "button",
+          "phone_number_id": "990310140831998"
+        },
+        "node_type": "send_interactive"
+      },
+      "id": "acordar_reintentar",
+      "position": {
+        "x": 120,
+        "y": 1640
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "has_timeout": true,
+          "timeout_seconds": 21600
+        },
+        "node_type": "wait_for_response"
+      },
+      "id": "acordar_reintentar_esperar",
+      "position": {
+        "x": 440,
+        "y": 1640
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "conditions": [
+            {
+              "description": "La función de ruteo devolvió \"m_acordar\"",
+              "label": "m_acordar"
+            },
+            {
+              "description": "La función de ruteo devolvió \"m_humano\"",
+              "label": "m_humano"
+            },
+            {
+              "description": "La función de ruteo devolvió \"menu\"",
+              "label": "menu"
+            },
+            {
+              "description": "La función de ruteo devolvió \"otro\"",
+              "label": "otro"
+            },
+            {
+              "description": "La función de ruteo devolvió \"timeout\"",
+              "label": "timeout"
+            }
+          ],
+          "decision_type": "function",
+          "function_slug": "vigi-ruteo"
+        },
+        "node_type": "decide"
+      },
+      "id": "acordar_reintentar_ruta",
+      "position": {
+        "x": 760,
+        "y": 1640
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
+          "message": "Para ayudarte mejor, elegí una de las opciones 👇",
+          "phone_number_id": "990310140831998"
+        },
+        "node_type": "send_text"
+      },
+      "id": "acordar_reintentar_otro",
+      "position": {
+        "x": 1080,
+        "y": 1640
+      },
+      "type": "flow-node"
+    },
+    {
+      "data": {
+        "config": {
           "message": "Listo, te pasamos con una persona del equipo. 🙌\n\nContanos tu consulta y te respondemos por acá lo antes posible.",
           "phone_number_id": "990310140831998"
         },
@@ -875,7 +1191,7 @@
       "id": "humano",
       "position": {
         "x": 120,
-        "y": 1200
+        "y": 1860
       },
       "type": "flow-node"
     },
@@ -889,7 +1205,7 @@
       "id": "handoff",
       "position": {
         "x": 440,
-        "y": 1200
+        "y": 1860
       },
       "type": "flow-node"
     },
@@ -937,7 +1253,7 @@
       "id": "rec_cat",
       "position": {
         "x": 120,
-        "y": 1420
+        "y": 2080
       },
       "type": "flow-node"
     },
@@ -952,7 +1268,7 @@
       "id": "rec_cat_esperar",
       "position": {
         "x": 440,
-        "y": 1420
+        "y": 2080
       },
       "type": "flow-node"
     },
@@ -989,7 +1305,7 @@
       "id": "rec_cat_ruta",
       "position": {
         "x": 760,
-        "y": 1420
+        "y": 2080
       },
       "type": "flow-node"
     },
@@ -1004,7 +1320,7 @@
       "id": "rec_cat_otro",
       "position": {
         "x": 1080,
-        "y": 1420
+        "y": 2080
       },
       "type": "flow-node"
     },
@@ -1034,7 +1350,7 @@
       "id": "rec_loc",
       "position": {
         "x": 120,
-        "y": 1640
+        "y": 2300
       },
       "type": "flow-node"
     },
@@ -1049,7 +1365,7 @@
       "id": "rec_loc_esperar",
       "position": {
         "x": 440,
-        "y": 1640
+        "y": 2300
       },
       "type": "flow-node"
     },
@@ -1078,7 +1394,7 @@
       "id": "rec_loc_ruta",
       "position": {
         "x": 760,
-        "y": 1640
+        "y": 2300
       },
       "type": "flow-node"
     },
@@ -1093,7 +1409,7 @@
       "id": "rec_loc_otro",
       "position": {
         "x": 1080,
-        "y": 1640
+        "y": 2300
       },
       "type": "flow-node"
     },
@@ -1119,7 +1435,7 @@
       "id": "rec_pow",
       "position": {
         "x": 120,
-        "y": 1860
+        "y": 2520
       },
       "type": "flow-node"
     },
@@ -1134,7 +1450,7 @@
       "id": "rec_pow_esperar",
       "position": {
         "x": 440,
-        "y": 1860
+        "y": 2520
       },
       "type": "flow-node"
     },
@@ -1163,7 +1479,7 @@
       "id": "rec_pow_ruta",
       "position": {
         "x": 760,
-        "y": 1860
+        "y": 2520
       },
       "type": "flow-node"
     },
@@ -1178,7 +1494,7 @@
       "id": "rec_pow_otro",
       "position": {
         "x": 1080,
-        "y": 1860
+        "y": 2520
       },
       "type": "flow-node"
     },
@@ -1217,7 +1533,7 @@
       "id": "rec_bud",
       "position": {
         "x": 120,
-        "y": 2080
+        "y": 2740
       },
       "type": "flow-node"
     },
@@ -1232,7 +1548,7 @@
       "id": "rec_bud_esperar",
       "position": {
         "x": 440,
-        "y": 2080
+        "y": 2740
       },
       "type": "flow-node"
     },
@@ -1261,7 +1577,7 @@
       "id": "rec_bud_ruta",
       "position": {
         "x": 760,
-        "y": 2080
+        "y": 2740
       },
       "type": "flow-node"
     },
@@ -1276,7 +1592,7 @@
       "id": "rec_bud_otro",
       "position": {
         "x": 1080,
-        "y": 2080
+        "y": 2740
       },
       "type": "flow-node"
     },
@@ -1290,7 +1606,7 @@
       "id": "recomendar",
       "position": {
         "x": 120,
-        "y": 2300
+        "y": 2960
       },
       "type": "flow-node"
     },
@@ -1305,7 +1621,7 @@
       "id": "recomendacion",
       "position": {
         "x": 440,
-        "y": 2300
+        "y": 2960
       },
       "type": "flow-node"
     },
@@ -1335,7 +1651,7 @@
       "id": "rec_despues",
       "position": {
         "x": 120,
-        "y": 2520
+        "y": 3180
       },
       "type": "flow-node"
     },
@@ -1350,7 +1666,7 @@
       "id": "rec_despues_esperar",
       "position": {
         "x": 440,
-        "y": 2520
+        "y": 3180
       },
       "type": "flow-node"
     },
@@ -1387,7 +1703,7 @@
       "id": "rec_despues_ruta",
       "position": {
         "x": 760,
-        "y": 2520
+        "y": 3180
       },
       "type": "flow-node"
     },
@@ -1402,7 +1718,7 @@
       "id": "rec_despues_otro",
       "position": {
         "x": 1080,
-        "y": 2520
+        "y": 3180
       },
       "type": "flow-node"
     }

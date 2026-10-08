@@ -9,6 +9,9 @@
 //             pedido concreto la tiene que ver una persona.
 //   m_recomendar  llegó desde "Asesorate" del header de la web ("Hola! Quiero
 //             asesoramiento para elegir"): arranca en "Ayuda para elegir".
+//   acordar_directo  llegó desde el link del mail de compra o de la web
+//             ("Hola! Quiero acordar el envío de mi pedido <id>"): ya trae el
+//             número, así que se valida sin preguntarlo (vigi-acordar).
 //   m_*       tocó un botón de un menú de una charla que ya había terminado:
 //             se lo lleva directo a esa sección en vez de saludar de nuevo.
 //   menu      todo lo demás: saludo y menú principal.
@@ -35,6 +38,10 @@ async function handler(request, env) {
   const pedido = String(ultimo?.content ?? "").match(/consulto por mi pedido\s+(\S+)/i);
   if (pedido && edges.includes("m_humano")) {
     return responder("m_humano", { pedido_consultado: pedido[1] });
+  }
+
+  if (/acordar el env[ií]o de mi pedido/i.test(String(ultimo?.content ?? "")) && edges.includes("acordar_directo")) {
+    return responder("acordar_directo");
   }
 
   if (/quiero asesoramiento/i.test(String(ultimo?.content ?? "")) && edges.includes("m_recomendar")) {

@@ -9,6 +9,7 @@ const sendEmail = require("../controllers/Notifications/sendEmail");
 const senders = require("../utils/senders");
 const { customerIdDe } = require("../utils/mpPayment");
 const { enviarCompra } = require("./metaCapi");
+const { whatsappAcordar } = require("../utils/whatsapp");
 
 /**
  * Registrar un pago de Mercado Pago: una sola función, tres puertas.
@@ -102,21 +103,24 @@ const recordMercadoPagoPayment = async (paymentId) => {
     const customer = await customerRepository.findById(customer_id);
 
     if (customer) {
+      // Con "acordar envío" el cliente escribe por WhatsApp con su número de
+      // pedido (flujo de Kapso): el mail le da el link listo.
+      const orden = await orderRepository.findByPaymentId(payment.id);
+      const acordar = orden?.delivery_type === "A";
+
       const html = successPayHtml(
         customer.user_data.name,
         itemsDe(payment),
         monto,
         payment.date_approved,
         payment.payment_type_id,
-        payment.id
+        payment.id,
+        { acordarUrl: acordar ? whatsappAcordar(payment.id) : null }
       );
 
       await sendEmail(customer.email, senders.noreply, "Pago Exitoso | VIGI", html);
-      // Con "acordar envío" alguien tiene que escribirle al cliente: que se
-      // vea desde el asunto.
-      const orden = await orderRepository.findByPaymentId(payment.id);
-      const asunto =
-        orden?.delivery_type === "A" ? "Nueva venta! (acordar envío)" : "Nueva venta!";
+      // Que se vea desde el asunto: hay una entrega por coordinar.
+      const asunto = acordar ? "Nueva venta! (acordar envío)" : "Nueva venta!";
 
       await sendEmail(process.env.ADMIN_EMAIL, senders.noreply, asunto, html);
 

@@ -59,7 +59,11 @@ const resetPasswordHtml = (name, url) => {
     `;
 };
 
-const successPayHtml = (name, products, total_payed, date, payment_method, nroOrder) => {
+/**
+ * @param acordarUrl link de WhatsApp para coordinar la entrega, solo cuando el
+ *   cliente eligió "acordar envío" (utils/whatsapp.whatsappAcordar).
+ */
+const successPayHtml = (name, products, total_payed, date, payment_method, nroOrder, { acordarUrl } = {}) => {
     const productRows = products.map(product => `
     <tr style="border: 1px;">
         <td style="text-align: center;">${product.quantity}</td>
@@ -89,6 +93,12 @@ const successPayHtml = (name, products, total_payed, date, payment_method, nroOr
             <p>Es un placer informarte que hemos recibido con éxito el pago correspondiente a tu compra realizada el ${fecha}. Queremos confirmarte que el pago ha sido procesado correctamente y tu pedido ha sido aprobado.</p>
             <span>Número de orden:</span>
             <span style="font-weight: bold; font-size: large;">${nroOrder}</span>
+            ${acordarUrl ? `
+            <div style="margin: 20px 0; padding: 16px; border: 2px solid #1E053F; border-radius: 12px;">
+                <p style="margin: 0 0 8px; font-weight: bold;">Elegiste acordar el envío: falta coordinar la entrega</p>
+                <p style="margin: 0 0 12px;">Escribinos por WhatsApp, elegí <b>"Acordar envío de mi compra"</b> y mandanos tu número de pedido (<b>${nroOrder}</b>). Una persona del equipo coordina con vos el punto, el día y el horario de entrega en CABA.</p>
+                <a href="${acordarUrl}" style="display: inline-block; padding: 10px 20px; background-color: #25D366; color: white; text-decoration: none; border-radius: 999px; font-weight: bold;">Coordinar por WhatsApp</a>
+            </div>` : ''}
             <h3>Detalles de la compra:</h3>
             <ul>
                 <li style="margin: 10px auto;">Producto(s):

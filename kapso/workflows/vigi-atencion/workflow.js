@@ -68,6 +68,7 @@ const pregunta = (id, mensaje, rutas) => {
 
 // Opciones del menú principal que también se pueden tocar desde otros lados.
 const SECCIONES = {
+  m_acordar: "acordar",
   m_recomendar: "rec_cat",
   m_envios: "envios",
   m_pagos: "pagos",
@@ -87,12 +88,14 @@ workflow.addNode(
     type: "decide",
     decisionType: "function",
     functionSlug: "vigi-entrada",
-    conditions: ["menu", "producto", ...Object.keys(SECCIONES)].map(condicion),
+    conditions: ["menu", "producto", "acordar_directo", ...Object.keys(SECCIONES)].map(condicion),
   },
   pos(1, 0)
 );
 workflow.addEdge(START, "entrada");
 workflow.addEdge("entrada", "menu", { label: "menu" });
+// Link del mail de compra: ya trae el número de pedido.
+workflow.addEdge("entrada", "acordar_ruta", { label: "acordar_directo" });
 workflow.addEdge("entrada", "producto", { label: "producto" });
 for (const [label, destino] of Object.entries(SECCIONES)) {
   workflow.addEdge("entrada", destino, { label });
@@ -117,6 +120,7 @@ pregunta(
       {
         title: "Elegí una opción",
         rows: [
+          { id: "m_acordar", title: "Acordar envío de compra", description: "Compraste con \"acordar el envío\": coordinamos la entrega" },
           { id: "m_recomendar", title: "Ayuda para elegir", description: "Te recomendamos productos según lo que necesitás" },
           { id: "m_envios", title: "Envíos y entregas", description: "Plazos y costos de envío a todo el país" },
           { id: "m_pagos", title: "Medios de pago" },
@@ -162,7 +166,8 @@ texto(
   "🚚 *Envíos y entregas*\n\n" +
     "• *CABA*: te llega en 24 h hábiles, sin costo.\n" +
     "• *Resto del AMBA*: en un máximo de 4 días hábiles.\n" +
-    "• *Resto del país*: de 8 a 12 días hábiles. El envío es gratis desde $450.000; por debajo de ese monto se cotiza con Andreani según tu código postal y ves el costo antes de pagar.\n\n" +
+    "• *Resto del país*: de 8 a 12 días hábiles, por Correo Argentino, a domicilio o para retirar en sucursal. El retiro en sucursal es gratis desde $450.000; el resto se cotiza según tu código postal y ves el costo antes de pagar.\n" +
+    "• *Acordar el envío*: pagás solo los productos y te lo llevamos sin cargo a un punto de CABA que te sirva (por ejemplo, un expreso). Después de comprar, escribinos acá y elegí \"Acordar envío de compra\".\n\n" +
     "Si el pago se aprueba antes de las 17:00, despachamos ese mismo día. No tenemos envío express.\n\n" +
     `Más info: ${TIENDA}/legales/envios`,
   0,
@@ -219,6 +224,76 @@ pregunta(
 );
 
 texto("gracias", "¡Gracias por escribirnos! 🙌 Cuando quieras, estamos por acá.", 4);
+
+// ---------------------------------------------------------------------------
+// Acordar envío de mi compra
+//
+// El cliente eligió "acordar el envío" en el checkout. Se le pide el número
+// de pedido, vigi-acordar lo valida contra la API y, si corresponde, la charla
+// pasa a una persona que coordina punto, día y horario. Desde el link del mail
+// de compra se entra directo a la validación, con el número ya en el mensaje.
+// ---------------------------------------------------------------------------
+
+fila += 1;
+texto(
+  "acordar",
+  "📦 *Acordar el envío*\n\n" +
+    "Mandanos tu *número de pedido*. Lo encontrás en el mail de confirmación de compra y en tu cuenta de la web, en \"Pedidos\".",
+  0
+);
+workflow.addNode("acordar_esperar", { type: "wait_for_response", timeoutSeconds: ESPERA }, pos(1));
+workflow.addNode(
+  "acordar_ruta",
+  {
+    type: "decide",
+    decisionType: "function",
+    functionSlug: "vigi-acordar",
+    conditions: ["ok", "no_es_acordar", "no_encontrado", "timeout"].map(condicion),
+  },
+  pos(2)
+);
+workflow.addEdge("acordar", "acordar_esperar");
+workflow.addEdge("acordar_esperar", "acordar_ruta");
+workflow.addEdge("acordar_ruta", "fin", { label: "timeout" });
+
+fila += 1;
+texto(
+  "acordar_ok",
+  "¡Listo! ✅ Encontramos tu pedido *{{vars.pedido_acordar}}*.\n\n" +
+    "Te pasamos con una persona del equipo para coordinar el punto, el día y el horario de entrega en CABA. " +
+    "Si ya sabés a qué expreso, transporte o dirección querés que lo llevemos, contanos acá.\n\n" +
+    `Condiciones: ${TIENDA}/legales/envios#acordar`,
+  0
+);
+workflow.addNode("acordar_handoff", { type: "handoff", reason: "acordar_envio" }, pos(1));
+workflow.addEdge("acordar_ruta", "acordar_ok", { label: "ok" });
+workflow.addEdge("acordar_ok", "acordar_handoff");
+
+texto(
+  "acordar_no_es",
+  "El pedido *{{vars.pedido_acordar}}* no tiene el envío a acordar: va por Correo Argentino, como elegiste al comprar. " +
+    "Estado: *{{vars.pedido_estado}}*.\n\n" +
+    `Podés seguirlo desde tu cuenta: ${TIENDA}/profile`,
+  2
+);
+workflow.addEdge("acordar_ruta", "acordar_no_es", { label: "no_es_acordar" });
+workflow.addEdge("acordar_no_es", "despues");
+
+workflow.addEdge("acordar_ruta", "acordar_reintentar", { label: "no_encontrado" });
+pregunta(
+  "acordar_reintentar",
+  {
+    interactiveType: "button",
+    bodyText:
+      "No encontramos ese número de pedido. 🤔 Revisalo en el mail de confirmación de compra: es el que dice \"Número de orden\".",
+    buttons: [
+      { id: "m_acordar", title: "Probar de nuevo" },
+      { id: "m_humano", title: "Hablar con alguien" },
+      { id: "menu", title: "Menú principal" },
+    ],
+  },
+  { m_acordar: "acordar", m_humano: "humano", menu: "menu" }
+);
 
 // ---------------------------------------------------------------------------
 // Hablar con una persona
