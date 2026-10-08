@@ -328,6 +328,35 @@ const recommend = async ({
   };
 };
 
+/**
+ * Bulto de cada producto para cotizar el envío (migración 0023).
+ *
+ * Medidas: SIEMPRE las del perfil de caja de su categoría, o el "Estándar" si
+ * la categoría no tiene. Las medidas propias del producto no se usan: se
+ * decidió cotizar por cajas típicas, que son las que se usan para despachar.
+ * Peso: el del producto si lo tiene cargado, si no el del perfil.
+ */
+const findShippingDims = async (ids) => {
+  const valid = ids.filter(isUuid);
+  if (valid.length === 0) return [];
+
+  const { rows } = await query(
+    `select p.id,
+            coalesce(p.weight_grams, sp.weight_grams, std.weight_grams) as weight_grams,
+            coalesce(sp.height_cm, std.height_cm) as height_cm,
+            coalesce(sp.width_cm,  std.width_cm)  as width_cm,
+            coalesce(sp.length_cm, std.length_cm) as length_cm
+       from products p
+       left join categories        c   on c.name = p.category
+       left join shipping_profiles sp  on sp.id = c.shipping_profile_id
+       left join shipping_profiles std on std.name = 'Estándar'
+      where p.id = any($1::uuid[])`,
+    [valid]
+  );
+
+  return rows;
+};
+
 module.exports = {
   PRODUCT_FIELDS,
   findById,
@@ -339,4 +368,5 @@ module.exports = {
   search,
   suggest,
   recommend,
+  findShippingDims,
 };

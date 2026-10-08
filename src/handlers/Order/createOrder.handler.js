@@ -1,5 +1,6 @@
 const orderRepository = require("../../repositories/order.repository");
 const couponRepository = require("../../repositories/coupon.repository");
+const cartRepository = require("../../repositories/cart.repository");
 
 // Called from the payment webhooks, not from a route: it receives the gateway
 // payload rather than req/res.
@@ -27,6 +28,9 @@ const createOrderHandler = async (payment_id, data, amount_paid) => {
   // Lo dejó anotado el checkout en el carrito, que todavía no se vació.
   const pending = await couponRepository.findPendingByCustomer(customer_id);
 
+  // Igual con el envío: domicilio o sucursal y cuánto se cobró.
+  const shipping = await cartRepository.findPendingShippingByCustomer(customer_id);
+
   const result = await orderRepository.create({
     payment_id,
     customer_id,
@@ -36,6 +40,9 @@ const createOrderHandler = async (payment_id, data, amount_paid) => {
     coupon_id: pending?.coupon_id ?? null,
     coupon_code: pending?.code ?? null,
     discount: pending?.discount ?? 0,
+    delivery_type: shipping?.delivery_type ?? null,
+    shipping_agency: shipping?.shipping_agency ?? null,
+    shipping_cost: shipping?.shipping_cost ?? null,
   });
 
   // Solo si la orden se insertó en esta llamada: la pasarela reintenta el

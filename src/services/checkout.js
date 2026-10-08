@@ -86,10 +86,18 @@ const buildTotals = async ({ cart, customer_id, address }) => {
 
   // El retiro en oficina se dio de baja: `carts.local_pickup` se ignora a
   // propósito, para que un carrito que lo tenía elegido no siga saliendo con
-  // envío gratis.
+  // envío gratis. La forma de entrega es la de Correo (`delivery_type`), y
+  // también sale del carrito y no del request.
   const shipping = address
-    ? await quoteShipping(address, subtotal)
-    : { cost: 0, free: false, reason: null, quoted: false };
+    ? await quoteShipping({
+        address,
+        subtotal,
+        items,
+        deliveryType: cart.delivery_type ?? null,
+      })
+    : { cost: 0, free: false, reason: null, free_reason: null, quoted: false,
+        delivery_type: cart.delivery_type ?? "D", options: null, valid_to: null,
+        quote_error: null };
 
   return {
     items: discountedItems,
@@ -99,8 +107,10 @@ const buildTotals = async ({ cart, customer_id, address }) => {
     coupon,
     couponId,
     couponError,
-    shipping,
-    amount_to_pay: round(subtotal + shipping.cost),
+    shipping: { ...shipping, agency: cart.shipping_agency ?? null },
+    // Con `cost` null (Correo no cotizó lo elegido) el total es solo de
+    // productos, para mostrar; createPaymentOrder no cobra en ese caso.
+    amount_to_pay: round(subtotal + (shipping.cost ?? 0)),
   };
 };
 

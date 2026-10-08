@@ -32,10 +32,29 @@ const createPaymentOrder = async (req, res) => {
       address: payer.user_data.address,
     });
 
+    // Correo no cotizó lo que eligió: no se cobra un envío inventado. El
+    // checkout le ofrece acordar el envío.
+    if (totals.shipping.cost === null) {
+      return res.status(400).json({
+        success: false,
+        message: totals.shipping.quote_error ?? "No pudimos cotizar el envío",
+      });
+    }
+
+    if (totals.shipping.delivery_type === "S" && !cart.shipping_agency) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Elegí la sucursal donde lo retirás" });
+    }
+
     // Queda anotado en el carrito cuánto descuento se aplicó: el webhook llega
     // después y solo trae ítems ya descontados, así que sin esto la orden no
     // podría registrar el cupón ni contar el canje.
     await couponRepository.setCartDiscount(cart_id, totals.discount);
+
+    // Lo mismo con el envío: la orden registra cuánto se cobró y cómo se
+    // entrega (domicilio o la sucursal elegida), y el webhook no lo trae.
+    await cartRepository.setShippingCost(cart_id, totals.shipping.cost);
 
     let paymentOrder;
     if (method == "nv") {

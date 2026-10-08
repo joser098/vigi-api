@@ -112,7 +112,13 @@ const recordMercadoPagoPayment = async (paymentId) => {
       );
 
       await sendEmail(customer.email, senders.noreply, "Pago Exitoso | VIGI", html);
-      await sendEmail(process.env.ADMIN_EMAIL, senders.noreply, "Nueva venta!", html);
+      // Con "acordar envío" alguien tiene que escribirle al cliente: que se
+      // vea desde el asunto.
+      const orden = await orderRepository.findByPaymentId(payment.id);
+      const asunto =
+        orden?.delivery_type === "A" ? "Nueva venta! (acordar envío)" : "Nueva venta!";
+
+      await sendEmail(process.env.ADMIN_EMAIL, senders.noreply, asunto, html);
 
       if (customer.cart_id) await cartRepository.empty(customer.cart_id);
     }

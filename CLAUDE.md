@@ -46,7 +46,7 @@ ninguna parte del código.
 | `marketing.repository.js` | baja de la lista de novedades |
 
 Lo que queda en `src/controllers/` **no toca la base**: son adaptadores de APIs
-externas (Andreani, Resend, Mercado Pago, Nave).
+externas (Resend, Mercado Pago, Nave). MiCorreo vive en `services/micorreo.js`.
 
 ### Precios
 
@@ -128,7 +128,7 @@ estáticos de `uploads/` en `/public`).
 | `/api/customer` | mixta | registro, login, perfil, favoritos, verificación de email, reset de password, foto de perfil |
 | `/api/cart` | JWT | agregar producto, vaciar, obtener, cupón, forma de entrega |
 | `/api/payment` | mixta | crear orden (MP o Nave), 2 webhooks, feedback |
-| `/api/logistic` | JWT | costo de envío por código postal (Andreani) |
+| `/api/logistic` | JWT | cotización de envío y sucursales (Correo Argentino) |
 | `/api/order` | JWT | órdenes del cliente |
 | `/api/marketing` | pública | baja de la lista de novedades |
 
@@ -159,45 +159,39 @@ Dos reglas, una sola idea: **nada que baje el precio llega en el request.**
   después y solo trae ítems ya descontados, el checkout deja el monto anotado
   en `carts.coupon_discount` y la orden lo consume.
 
-Envío: `services/shipping.js`. Es gratis por zona (CABA, que no cotiza) o por
-monto (`FREE_SHIPPING_MIN_PURCHASE`, hoy $450.000, medido sobre el subtotal
-**con el cupón ya descontado**). Los dos casos cortan antes de llamar a
-Andreani. El comentario de la constante tiene la aritmética que justifica el
-número.
+Envío: **Correo Argentino** (API MiCorreo), que reemplazó a Andreani en
+octubre de 2026. Spec y respuestas reales en `vigi-admin/docs/correo-argentino.md`.
 
-#### Pendiente: dimensiones por producto
+- `services/micorreo.js` — cliente: token cacheado, `rates`, `agencies`.
+  Reintenta cortes de conexión y 429: el servidor de Correo (Imperva) resetea
+  conexiones al azar y **bloquea la IP un par de minutos ante ráfagas** de
+  pedidos. No martillarlo en pruebas.
+- `services/bulto.js` — arma los bultos desde los ítems del carrito. **Las
+  medidas son siempre las del perfil de caja** de la categoría (o "Estándar");
+  el peso, el del producto si lo tiene, si no el del perfil (migración 0023). Se apilan; pasados 25 kg o 150 cm se abre otro bulto y se suman las
+  cotizaciones. Función pura con test.
+- `services/shipping.js` — `quoteShipping` cotiza domicilio (`D`) y sucursal
+  (`S`), solo servicio Clásico, y devuelve lo elegido. **Gratis:** en CABA,
+  todo; fuera de CABA, solo la sucursal y desde `FREE_SHIPPING_MIN_PURCHASE`
+  ($450.000, medido sobre el subtotal con cupón).
+- Tercera opción, **acordar el envío** (`A`): no se cobra, el cliente paga solo
+  los productos y se lo contacta después (el mail al admin dice "acordar envío"
+  en el asunto). Es para cerrar la venta: si Correo falla, `quoteShipping` no
+  lanza, devuelve `cost: null` + `quote_error`, y el checkout ofrece `A`.
+  `createPaymentOrder` se niega a cobrar con `cost` null.
+- La elección vive en el carrito (`carts.delivery_type`, `shipping_agency`,
+  migración 0028): `PUT /api/cart/delivery { delivery_type: "D"|"S"|"A", agency_code }`. La
+  sucursal se valida contra MiCorreo y se guarda como snapshot.
+  `GET /api/logistic/agencies` lista las de la provincia del cliente, las
+  cercanas a su CP primero.
+- Al pagar, `createPaymentOrder` congela el costo en `carts.shipping_cost` y la
+  orden lo copia (`orders.delivery_type`, `shipping_agency`, `shipping_cost`),
+  igual que el cupón.
 
-**Es la deuda técnica que más plata cuesta hoy.** La cotización de Andreani usa
-un bulto fijo de 3,5 kg / 20×25×35 cm para *todo*
-(`getShippingCostsByAddress.controller.js`), porque el catálogo no guarda peso
-ni medidas. Contra las tarifas de hoy:
-
-| Bulto | Córdoba | Salta |
-|---|---|---|
-| 3,5 kg (el que se cotiza siempre) | $26.725 | $38.063 |
-| kit real de 10 kg | $78.619 | $120.801 |
-| kit real de 18 kg | $105.855 | $168.544 |
-
-O sea que un kit se cotiza a un tercio o un quinto de lo que después factura
-Andreani, **y eso ya pasa en los envíos pagos**, no solo en los gratuitos. El
-envío gratis lo único que hace es sacar la cobertura parcial que daba lo que
-pagaba el cliente.
-
-Subir `FREE_SHIPPING_MIN_PURCHASE` no lo arregla: a $450.000 el bulto estándar
-deja 8,6% neto, pero un kit de 10 kg al norte sigue perdiendo. El arreglo real
-es:
-
-1. ~~Guardar `weight_grams`, `height_cm`, `width_cm`, `length_cm` en
-   `products`~~ — hecho en la migración 0023, junto con `shipping_profiles`
-   (perfil de caja por categoría, `categories.shipping_profile_id`). Se cargan
-   desde vigi-admin (`/envios` y el detalle de producto). Bulto de un producto
-   = sus columnas propias si no son NULL (van las cuatro o ninguna); si no, el
-   perfil de su categoría. **Ninguna cotización lo lee todavía.**
-2. Armar el bulto desde los ítems del carrito en vez de la constante
-   `BULTO_ESTANDAR`.
-3. Pasar `valorDeclarado` = total del carrito. Hoy está fijo en $30.000: una
-   cámara de $400.000 viaja asegurada por $30.000. Asegurar bien cuesta poco
-   ($26.725 → $29.387 para $250.000 declarados a Córdoba).
+**Pendiente:** ninguna categoría tiene perfil de caja, así que hoy todo cotiza
+como "Estándar" (3,5 kg, 20×25×35 por unidad). Asignarlos desde vigi-admin
+`/envios`. `valorDeclarado` no se manda todavía (MiCorreo lo
+pide recién en `/shipping/import`, fase 2).
 
 ### Mails de estado del pedido
 

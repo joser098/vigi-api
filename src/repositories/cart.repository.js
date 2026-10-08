@@ -27,6 +27,8 @@ const findById = async (cart_id) => {
        c.coupon_id,
        c.coupon_discount,
        c.local_pickup,
+       c.delivery_type,
+       c.shipping_agency,
        -- El cupón viaja entero y no como un monto ya calculado: su validez
        -- depende de la fecha, del subtotal y de cuántas veces lo usó el
        -- cliente, así que lo resuelve services/coupons en cada llamada.
@@ -116,6 +118,55 @@ const setLocalPickup = async (cart_id, local_pickup) => {
   return updated(result);
 };
 
+// Forma de entrega de Correo Argentino (migración 0028). La sucursal se guarda
+// como snapshot de lo que devolvió MiCorreo; el handler ya verificó que exista.
+// Volver a domicilio la borra, para que el constraint no quede colgado.
+const setDelivery = async (cart_id, delivery_type, agency = null) => {
+  const result = await query(
+    `update carts
+        set delivery_type   = $2,
+            shipping_agency = $3
+      where id = $1
+    returning id`,
+    [cart_id, delivery_type, delivery_type === "S" ? JSON.stringify(agency) : null]
+  );
+
+  return updated(result);
+};
+
+// Congela el envío cobrado al arrancar el pago, como `coupon_discount`: el
+// webhook no lo trae y la orden lo necesita. Un carrito que nunca eligió se
+// cotizó como domicilio, y así queda anotado.
+const setShippingCost = async (cart_id, amount) => {
+  const result = await query(
+    `update carts
+        set shipping_cost = $2,
+            delivery_type = coalesce(delivery_type, 'D')
+      where id = $1
+    returning id`,
+    [cart_id, amount]
+  );
+
+  return updated(result);
+};
+
+/**
+ * La forma de entrega con la que se pagó, para copiarla a la orden. Mismo
+ * camino que el cupón (coupon.repository.findPendingByCustomer): el carrito
+ * todavía no se vació cuando se crea la orden.
+ */
+const findPendingShippingByCustomer = async (customer_id) => {
+  const { rows } = await query(
+    `select delivery_type, shipping_agency, shipping_cost
+       from carts
+      where customer_id = $1
+        and shipping_cost is not null`,
+    [customer_id]
+  );
+
+  return rows[0] ?? null;
+};
+
 const empty = async (cart_id) =>
   withTransaction(async (client) => {
     await client.query(`delete from cart_items where cart_id = $1`, [cart_id]);
@@ -128,7 +179,10 @@ const empty = async (cart_id) =>
               amount_to_pay   = 0,
               coupon_id       = null,
               coupon_discount = 0,
-              local_pickup    = false
+              local_pickup    = false,
+              delivery_type   = null,
+              shipping_agency = null,
+              shipping_cost   = null
         where id = $1
       returning id`,
       [cart_id]
@@ -137,4 +191,13 @@ const empty = async (cart_id) =>
     return updated(result);
   });
 
-module.exports = { findById, create, setItems, setLocalPickup, empty };
+module.exports = {
+  findById,
+  create,
+  setItems,
+  setLocalPickup,
+  setDelivery,
+  setShippingCost,
+  findPendingShippingByCustomer,
+  empty,
+};

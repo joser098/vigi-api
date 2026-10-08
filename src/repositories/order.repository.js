@@ -18,6 +18,10 @@ const ORDER_FIELDS = `
   o.carrier,
   o.tracking_number,
   o.tracking_url,
+  -- Correo Argentino (migración 0028): domicilio o sucursal, y cuánto se cobró.
+  o.delivery_type,
+  o.shipping_agency,
+  o.shipping_cost,
   o.created_at as date,
   s.label as status_label,
   s.sort_order as status_order,
@@ -116,13 +120,17 @@ const create = async ({
   coupon_id = null,
   coupon_code = null,
   discount = 0,
+  delivery_type = null,
+  shipping_agency = null,
+  shipping_cost = null,
 }) =>
   withTransaction(async (client) => {
     const order = await client.query(
       `insert into orders
          (payment_id, customer_id, amount_paid, ip_address,
-          coupon_id, coupon_code, discount)
-       values ($1, $2, $3, $4, $5, $6, $7)
+          coupon_id, coupon_code, discount,
+          delivery_type, shipping_agency, shipping_cost)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        on conflict (payment_id) do nothing
        returning id`,
       [
@@ -133,6 +141,9 @@ const create = async ({
         coupon_id,
         coupon_code,
         discount,
+        delivery_type,
+        shipping_agency ? JSON.stringify(shipping_agency) : null,
+        shipping_cost,
       ]
     );
 
